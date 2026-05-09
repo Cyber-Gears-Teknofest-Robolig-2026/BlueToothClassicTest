@@ -16,39 +16,52 @@ import {
   useWindowDimensions,
   ScrollView,
   BackHandler,
-  Dimensions
+  Dimensions,
+  TextInput,
+  //KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
+  InteractionManager,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import RNBluetoothClassic from "react-native-bluetooth-classic";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { Buffer } from 'buffer';
+import { KeyboardProvider, KeyboardAvoidingView, KeyboardStickyView } from 'react-native-keyboard-controller';
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 
+// --- TİPLER ---
 interface BluetoothDevice {
   address: string;
   name?: string;
   bonded: boolean;
 }
 
-const HomeScreen = ({ onNavigate }: { onNavigate: (screen: string) => void }) => {
-  const insets = useSafeAreaInsets();
+interface Message {
+  id: string;
+  text: string;
+  isSender: boolean;
+  time: string;
+}
 
+// =====================================================================
+// 1. ANA MENÜ EKRANI (HOME SCREEN)
+// =====================================================================
+const HomeScreen = ({ onNavigate }: { onNavigate: (screen: string) => void }) => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      
       <View style={[styles.mainHeader, { paddingHorizontal: 25 }]}>
         <Text style={styles.mainHeaderText}>Hoş Geldiniz</Text>
         <Text style={styles.subHeaderText}>Lütfen bir işlem seçin</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity 
-          activeOpacity={0.8} 
-          style={styles.menuCard}
-          onPress={() => onNavigate('Bluetooth')}
-        >
+        <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => onNavigate('Bluetooth')}>
           <View style={[styles.menuIconCircle, { backgroundColor: "#E0F2FE" }]}>
-            <Icon name="bluetooth" size={32} color="#0284C7" />
+            <Icon name="bluetooth" size={30} color="#0284C7" />
           </View>
           <View style={styles.menuTextContent}>
             <Text style={styles.menuTitle}>Bluetooth Bağlantısı</Text>
@@ -57,13 +70,9 @@ const HomeScreen = ({ onNavigate }: { onNavigate: (screen: string) => void }) =>
           <Icon name="chevron-right" size={24} color="#CBD5E1" />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          activeOpacity={0.8} 
-          style={styles.menuCard}
-          onPress={() => onNavigate('Communication')}
-        >
+        <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => onNavigate('Communication')}>
           <View style={[styles.menuIconCircle, { backgroundColor: "#DCFCE7" }]}>
-            <Icon name="swap-horizontal" size={32} color="#15803D" />
+            <Icon name="swap-horizontal" size={30} color="#15803D" />
           </View>
           <View style={styles.menuTextContent}>
             <Text style={styles.menuTitle}>Cihaz İletişimi</Text>
@@ -76,31 +85,216 @@ const HomeScreen = ({ onNavigate }: { onNavigate: (screen: string) => void }) =>
   );
 };
 
-const CommunicationScreen = ({ onGoBack }: { onGoBack: () => void }) => {
-  return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+// =====================================================================
+// 2. CİHAZ İLETİŞİM EKRANI (CHAT EKRANI - WHATSAPP STYLE)
+// =====================================================================
+const CommunicationScreen = ({ onGoBack, connectedDevice }: { onGoBack: () => void, connectedDevice: BluetoothDevice | null }) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputText, setInputText] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
+  const insets = useSafeAreaInsets();
+
+  // VERİ OKUMA: Cihazdan gelen mesajları dinler
+  useEffect(() => {
+    if (!connectedDevice) return;
+    
+    const readSub = RNBluetoothClassic.onDeviceRead(connectedDevice.address, (event) => {
+    // Bluetooth'tan gelen veri genellikle UTF-8 string olarak gelir.
+    // Telefonun işletim sistemi (Android/iOS) bu string içindeki 
+    // Unicode karakterlerini otomatik olarak emojiye dönüştürür.
+    console.log("EVENT:", JSON.stringify(event));
+    if (event.data) {
+      console.log("DATA:", event.data);
+      const receivedData = event.data.trim();
+
+      const bytes = Buffer.from(event.data, "base64");
+
+      console.log("Value:", bytes.toString("utf8"));
       
-      <View style={styles.headerWithBack}>
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(),
+        text: receivedData, // Emoji burada doğrudan string içinde yer alır
+        isSender: false,
+        time: new Date().toLocaleTimeString()
+      }]);
+    }
+  });
+
+    return () => readSub.remove();
+  }, [connectedDevice]);
+
+  // KLAVYE YÖNETİMİ: Geri tuşuyla kapanınca boşluğu sıfırlar
+  useEffect(() => {
+    const hideSub = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setIsFocused(false);
+        inputRef.current?.blur();
+      }
+    );
+    return () => hideSub.remove();
+  }, []);
+
+  /*useEffect(() => {
+    const focused = inputRef.current?.isFocused();
+    console.log("Input focus durumunda mı?", focused);
+  }, [inputRef.current?.isFocused()]);*/
+
+
+  // VERİ GÖNDERME: Bluetooth üzerinden yazar
+  const sendMessage = async () => {
+    if (!inputText.trim() || !connectedDevice) return;
+    
+    const msg = inputText.trim();
+    setInputText(""); // Input'u hemen temizle (UX)
+
+    try {
+      // Bluetooth terminal standartı için mesaj sonuna \r\n ekliyoruz
+      await RNBluetoothClassic.writeToDevice(connectedDevice.address, msg + "\r\n");
+      
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(),
+        text: msg,
+        isSender: true,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } catch (e) {
+      Alert.alert("Hata", "Veri gönderilemedi. Cihaz bağlı mı?");
+    }
+  };
+
+  return (
+    <SafeAreaView
+      style={styles.chatMainContainer}
+      edges={[
+        "top",
+        "left",
+        "right",
+        //...(!isFocused ? ["bottom" as const] : []),
+        "bottom"
+      ]}
+    >
+      <View style={styles.chatHeader}>
         <TouchableOpacity onPress={onGoBack} style={styles.backBtn}>
-          <Icon name="arrow-left" size={26} color="#1E293B" />
+          <Icon name="arrow-left" size={24} color="#1E293B" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Cihaz İletişimi</Text>
-        <View style={styles.headerSpacer} />
+
+        <View style={{ marginLeft: 12 }}>
+          <Text style={styles.chatTitle}>
+            {connectedDevice?.name || "Bağlı Değil"}
+          </Text>
+          <Text style={styles.chatStatus}>
+            {connectedDevice ? "çevrimiçi" : "çevrimdışı"}
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.centerContent}>
-        <Icon name="hammer-wrench" size={60} color="#94A3B8" />
-        <Text style={styles.wipTitle}>Yapım Aşamasında</Text>
-        <Text style={styles.wipDesc}>
-          HC-05 ve diğer cihazlarla veri alışverişi yapacağın arayüz buraya gelecek.
-        </Text>
-      </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
+      >
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={item => item.id}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
+          renderItem={({ item }) => (
+            <View
+              style={[
+                styles.msgWrap,
+                item.isSender ? styles.msgWrapMe : styles.msgWrapYou,
+              ]}
+            >
+              <View
+                style={[
+                  styles.msgBubble,
+                  item.isSender ? styles.msgBubbleMe : styles.msgBubbleYou,
+                ]}
+              >
+                <Text style={styles.msgText}>{item.text}</Text>
+              </View>
+            </View>
+          )}
+          contentContainerStyle={styles.chatContent}
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({ animated: true })
+          }
+        />
+
+        <KeyboardStickyView 
+          offset={{
+            opened: insets.bottom,
+            closed: 0,
+          }}
+        >
+          <View
+            style={[
+              styles.inputRowContainer,
+              {
+                backgroundColor: "#FFFFFF",
+              },
+            ]}
+          >
+            <View style={[styles.inputBubble, isFocused && styles.inputBubbleFocused]}>
+              <Icon
+                name="emoticon-outline"
+                size={24}
+                color={isFocused ? "#075E54" : "#64748B"}
+              />
+
+              <TextInput
+                ref={inputRef}
+                style={styles.textInput}
+                placeholder="Mesaj yazın..."
+                placeholderTextColor="#94A3B8"
+                value={inputText}
+                onChangeText={setInputText}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                autoCorrect={false}
+                blurOnSubmit={false}
+                returnKeyType="send"
+                onSubmitEditing={sendMessage}
+                underlineColorAndroid="transparent"
+                disableFullscreenUI={true}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.sendBtn,
+                {
+                  backgroundColor:
+                    inputText.trim() && connectedDevice ? "#075E54" : "#94A3B8",
+                },
+              ]}
+              onPress={sendMessage}
+              disabled={!inputText.trim() || !connectedDevice}
+              activeOpacity={0.8}
+            >
+              <Icon name="send" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </KeyboardStickyView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-const BluetoothManager = ({ onGoBack }: { onGoBack: () => void }) => {
+// =====================================================================
+// 3. BLUETOOTH YÖNETİM EKRANI
+// =====================================================================
+interface BluetoothManagerProps {
+  onGoBack: () => void;
+  connectedDevice: BluetoothDevice | null;
+  setConnectedDevice: (device: BluetoothDevice | null) => void;
+}
+
+const BluetoothManager = ({ onGoBack, connectedDevice, setConnectedDevice }: BluetoothManagerProps) => {
   const insets = useSafeAreaInsets();
   const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = useWindowDimensions();
   const isLandscape = SCREEN_WIDTH > SCREEN_HEIGHT;
@@ -110,22 +304,12 @@ const BluetoothManager = ({ onGoBack }: { onGoBack: () => void }) => {
   const SNAP_CLOSED = SCREEN_HEIGHT;
 
   const [devices, setDevices] = useState<BluetoothDevice[]>([]);
-  const [connectedDevice, setConnectedDevice] = useState<BluetoothDevice | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
   const panY = useRef(new Animated.Value(SNAP_CLOSED)).current;
   const currentSnapPoint = useRef(SNAP_CLOSED);
-
-  useEffect(() => {
-    const disconnectSubscription = RNBluetoothClassic.onDeviceDisconnected((event) => {
-      setConnectedDevice(null);
-      setIsConnecting(false); 
-      Alert.alert("Bağlantı Koptu ⚠️", "Cihazın gücü kesildi veya menzilden çıkıldı.");
-    });
-    return () => disconnectSubscription.remove();
-  }, []);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -199,7 +383,12 @@ const BluetoothManager = ({ onGoBack }: { onGoBack: () => void }) => {
     try {
       closeModal();
       setIsConnecting(true);
-      const connected = await RNBluetoothClassic.connectToDevice(device.address);
+      const connected = await RNBluetoothClassic.connectToDevice(device.address, {
+        connectorType: "rfcomm",
+        CONNECTION_TYPE: "binary",
+        delimiter: "\n",     // Satır sonu karakterini bekle (En önemli kısım)
+        encoding: "utf-8",   // UTF-8 formatında çöz
+      });
       setConnectedDevice(connected as any);
       setIsConnecting(false);
     } catch (e) { setIsConnecting(false); Alert.alert("Hata", "Bağlantı kurulamadı."); }
@@ -329,8 +518,21 @@ const BluetoothManager = ({ onGoBack }: { onGoBack: () => void }) => {
   );
 };
 
+// =====================================================================
+// 4. ANA NAVİGASYON
+// =====================================================================
 const AppNavigator = () => {
   const [currentScreen, setCurrentScreen] = useState<'Home' | 'Bluetooth' | 'Communication'>('Home');
+  const [connectedDevice, setConnectedDevice] = useState<BluetoothDevice | null>(null);
+
+  useEffect(() => {
+    const disconnectSubscription = RNBluetoothClassic.onDeviceDisconnected((event) => {
+      setConnectedDevice(null);
+      Alert.alert("Bağlantı Koptu ⚠️", "Cihazın gücü kesildi veya menzilden çıkıldı.");
+      setCurrentScreen('Home'); 
+    });
+    return () => disconnectSubscription.remove();
+  }, []);
 
   useEffect(() => {
     const backAction = () => {
@@ -340,56 +542,119 @@ const AppNavigator = () => {
       }
       return false; 
     };
-
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
   }, [currentScreen]);
 
-  const navigateTo = (screen: 'Home' | 'Bluetooth' | 'Communication') => {
-    setCurrentScreen(screen);
-  };
-
   if (currentScreen === 'Bluetooth') {
-    return <BluetoothManager onGoBack={() => navigateTo('Home')} />;
+    return <BluetoothManager onGoBack={() => setCurrentScreen('Home')} connectedDevice={connectedDevice} setConnectedDevice={setConnectedDevice} />;
   }
 
   if (currentScreen === 'Communication') {
-    return <CommunicationScreen onGoBack={() => navigateTo('Home')} />;
+    return <CommunicationScreen onGoBack={() => setCurrentScreen('Home')} connectedDevice={connectedDevice} />;
   }
 
-  return <HomeScreen onNavigate={(screen) => navigateTo(screen as any)} />;
+  return <HomeScreen onNavigate={(screen) => setCurrentScreen(screen as any)} />;
 };
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AppNavigator />
-    </SafeAreaProvider>
+    <KeyboardProvider
+      statusBarTranslucent={false}
+      navigationBarTranslucent={false}
+    >
+      <SafeAreaProvider>
+        <AppNavigator />
+      </SafeAreaProvider>
+    </KeyboardProvider>
   );
 }
 
+// =====================================================================
+// TÜM STİLLER (TEMİZLENMİŞ)
+// =====================================================================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   mainHeader: { paddingTop: 20, paddingBottom: 10 },
   mainHeaderText: { fontSize: 28, fontWeight: "900", color: "#1E293B" },
   subHeaderText: { fontSize: 16, color: "#64748B", fontWeight: "500", marginTop: 4 },
-  scrollContent: { padding: 20, gap: 20, marginTop: 10 },
+  scrollContent: { paddingHorizontal: 25, paddingTop: 10, paddingBottom: 40, gap: 16 }, 
   
   headerWithBack: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 15, paddingBottom: 10 },
   backBtn: { padding: 8, backgroundColor: "#F1F5F9", borderRadius: 12 },
   headerTitle: { fontSize: 20, fontWeight: "800", color: "#1E293B" },
   headerSpacer: { width: 40 },
 
-  menuCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", padding: 20, borderRadius: 24, elevation: 2 },
-  menuIconCircle: { padding: 16, borderRadius: 20, marginRight: 16 },
+  menuCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", paddingVertical: 20, paddingHorizontal: 20, borderRadius: 24, borderWidth: 1, borderColor: "#F1F5F9", elevation: 3 },
+  menuIconCircle: { padding: 14, borderRadius: 18, marginRight: 16 },
   menuTextContent: { flex: 1 },
-  menuTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B", marginBottom: 4 },
+  menuTitle: { fontSize: 17, fontWeight: "800", color: "#1E293B", marginBottom: 4 },
   menuDesc: { fontSize: 13, color: "#64748B", fontWeight: "500" },
 
   centerContent: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30, gap: 15 },
-  wipTitle: { fontSize: 22, fontWeight: "800", color: "#334155" },
-  wipDesc: { fontSize: 15, color: "#64748B", textAlign: "center", lineHeight: 22 },
+  emptyTitle: { fontSize: 18, color: "#94A3B8" },
 
+  // WhatsApp Chat Stilleri
+  chatMainContainer: { flex: 1, backgroundColor: "#FFFFFF" },
+  chatHeader: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", padding: 15, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
+  chatTitle: { fontSize: 17, fontWeight: "800", color: "#1E293B" },
+  chatStatus: { fontSize: 12, color: "#10B981", fontWeight: "600" },
+  
+  chatContent: { paddingHorizontal: 15, paddingVertical: 20 },
+  msgWrap: { flexDirection: "row", marginBottom: 8 },
+  msgWrapMe: { justifyContent: "flex-end" },
+  msgWrapYou: { justifyContent: "flex-start" },
+  msgBubble: { maxWidth: "80%", padding: 10, borderRadius: 15, elevation: 1 },
+  msgBubbleMe: { backgroundColor: "#DCF8C6", borderTopRightRadius: 2 },
+  msgBubbleYou: { backgroundColor: "#F1F5F9", borderTopLeftRadius: 2 },
+  msgText: { fontSize: 15, color: "#1E293B" },
+  msgTextMe: { color: "#1E293B" },
+  msgTextYou: { color: "#1E293B" },
+
+  inputRowContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
+    alignItems: "center",
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    backgroundColor: "#FFFFFF",
+  },
+  inputBubble: { 
+    flex: 1, 
+    flexDirection: "row", 
+    backgroundColor: "#F1F5F9", 
+    borderRadius: 25, 
+    paddingHorizontal: 15, 
+    paddingVertical: 10, 
+    alignItems: "center", 
+    borderWidth: 1, 
+    borderColor: "transparent" 
+  },
+  inputBubbleFocused: { 
+    borderColor: "#075E54", 
+    backgroundColor: "#FFFFFF", 
+    //elevation: 2 
+  },
+  textInput: { 
+    flex: 1, 
+    marginLeft: 10, 
+    fontSize: 16, 
+    color: "#1E293B", 
+    paddingVertical: 0 
+  },
+  sendBtn: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 25, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    elevation: 2 
+  },
+
+  // Bluetooth Durum Stilleri
   statusLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
   label: { fontSize: 10, fontWeight: "800", color: "#94A3B8", letterSpacing: 1 },
   connectingBadge: { flexDirection: "row", alignItems: "center", backgroundColor: "#FEF3C7", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, gap: 2 },
@@ -401,7 +666,6 @@ const styles = StyleSheet.create({
   offlineBadge: { flexDirection: "row", alignItems: "center", backgroundColor: "#FEE2E2", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, gap: 4 },
   offlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#EF4444" },
   offlineText: { fontSize: 10, fontWeight: "900", color: "#EF4444", textTransform: "uppercase" },
-  
   infoCard: { backgroundColor: "#fff", margin: 20, padding: 25, borderRadius: 28, elevation: 4 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 15, marginBottom: 25 },
   infoText: { fontSize: 18, fontWeight: "900", color: "#1E293B" },
@@ -409,7 +673,8 @@ const styles = StyleSheet.create({
   scanBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
   disconnectBtn: { marginTop: 12, padding: 16, borderRadius: 16, alignItems: "center", backgroundColor: "#F1F5F9" },
   disconnectBtnText: { color: "#EF4444", fontWeight: "800" },
-  
+
+  // Modal Stilleri
   modalOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.5)", justifyContent: "flex-end" },
   modalBox: { backgroundColor: "#F8FAFC", borderTopLeftRadius: 40, borderTopRightRadius: 40, overflow: 'hidden', position: 'absolute', width: '100%' },
   interactiveHeader: { width: '100%', paddingTop: 12, paddingBottom: 20 },
@@ -419,14 +684,11 @@ const styles = StyleSheet.create({
   titleIconCircle: { backgroundColor: "#E0F2FE", padding: 8, borderRadius: 12 },
   modalTitle: { fontSize: 22, fontWeight: "900", color: "#0F172A" },
   closeCircle: { backgroundColor: "#E2E8F0", padding: 8, borderRadius: 20 },
-  
   scanningIndicator: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#E0F2FE", marginHorizontal: 20, paddingVertical: 8, borderRadius: 12, marginBottom: 15, gap: 10, borderWidth: 1, borderColor: "#BAE6FD" },
-  scanningIndicatorText: { fontSize: 13, color: "#0369A1", fontWeight: "700", includeFontPadding: false, textAlignVertical: "center" },
+  scanningIndicatorText: { fontSize: 13, color: "#0369A1", fontWeight: "700" },
   emptyStateText: { fontSize: 15, color: "#94A3B8", fontWeight: "600", textAlign: "center", marginTop: 50 },
-  
   listContentStyle: { paddingBottom: 80, paddingHorizontal: 20 },
   separator: { height: 12 },
-  
   deviceListItem: { flexDirection: "row", alignItems: "center", borderRadius: 24, padding: 16, borderWidth: 1 },
   listTextSection: { flex: 1, marginLeft: 15, gap: 2 },
   deviceName: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
@@ -435,19 +697,14 @@ const styles = StyleSheet.create({
   statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 10 },
   statusBadgeText: { fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
   listIconCircle: { padding: 12, borderRadius: 16 },
-  
   newCard: { backgroundColor: "#FFFFFF", borderColor: "#E2E8F0" },
-  newIconCircle: { backgroundColor: "#F1F5F9" },
-  newBadge: { backgroundColor: "#F1F5F9" },
-  newBadgeText: { color: "#64748B" },
-  
   pairedCard: { backgroundColor: "#F0F9FF", borderColor: "#BAE6FD" },
-  pairedIconCircle: { backgroundColor: "#E0F2FE" },
-  pairedBadge: { backgroundColor: "#E0F2FE" },
-  pairedBadgeText: { color: "#0284C7" },
-  
   connectedCard: { backgroundColor: "#F0FDF4", borderColor: "#86EFAC", borderWidth: 1.5 },
   connectedIconCircle: { backgroundColor: "#10B981" },
   connectedBadge: { backgroundColor: "#DCFCE7" },
   connectedBadgeText: { color: "#15803D" },
+  pairedBadge: { backgroundColor: "#E0F2FE" },
+  pairedBadgeText: { color: "#0284C7" },
+  newBadge: { backgroundColor: "#F1F5F9" },
+  newBadgeText: { color: "#64748B" },
 });
