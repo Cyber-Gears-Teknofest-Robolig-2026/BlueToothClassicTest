@@ -51,7 +51,9 @@ const AppNavigator = () => {
         "Cihazın gücü kesildi veya menzilden çıkıldı."
       );
     });
-    disconnectSubscription.remove();
+    return () => {
+      disconnectSubscription.remove();
+    };
   }, []);
 
   return (
@@ -76,9 +78,7 @@ const AppNavigator = () => {
 
         <Stack.Screen name="Communication">
           {() => (
-            <CommunicationScreen
-              connectedDevice={connectedDevice}
-            />
+            <CommunicationScreen />
           )}
         </Stack.Screen>
       </Stack.Navigator>

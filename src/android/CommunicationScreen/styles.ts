@@ -19,9 +19,14 @@ const styles = StyleSheet.create({
     fontWeight: "800", 
     color: "#1E293B" 
   },
-  chatStatus: { 
+  chatStatusConncected: { 
     fontSize: 12, 
     color: "#10B981", 
+    fontWeight: "600" 
+  },
+  chatStatusNotConncected: { 
+    fontSize: 12, 
+    color: "#EF4444", 
     fontWeight: "600" 
   },
   backBtn: { 

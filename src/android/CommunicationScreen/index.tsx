@@ -22,7 +22,10 @@ import {
 } from 'react-native-keyboard-controller';
 import styles from './styles';
 import { useNavigation } from "@react-navigation/native";
-import { AppNavigationProp } from "../App";
+import { 
+  AppNavigationProp,
+  useBluetoothStore 
+} from "../App";
 
 interface Message {
   id: string;
@@ -31,9 +34,12 @@ interface Message {
   time: string;
 }
 
-export default function CommunicationScreen({ connectedDevice }: { connectedDevice: BluetoothDevice | null }) {
+export default function CommunicationScreen() {
   
   const navigation = useNavigation<AppNavigationProp>();
+
+  const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
+  const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -47,9 +53,7 @@ export default function CommunicationScreen({ connectedDevice }: { connectedDevi
     if (!connectedDevice) return;
     
     const readSub = RNBluetoothClassic.onDeviceRead(connectedDevice.address, (event) => {
-    // Bluetooth'tan gelen veri genellikle UTF-8 string olarak gelir.
-    // Telefonun işletim sistemi (Android/iOS) bu string içindeki 
-    // Unicode karakterlerini otomatik olarak emojiye dönüştürür.
+
     console.log("EVENT:", JSON.stringify(event));
     if (event.data) {
       console.log("DATA:", event.data);
@@ -61,7 +65,7 @@ export default function CommunicationScreen({ connectedDevice }: { connectedDevi
       
       setMessages(prev => [...prev, {
         id: Math.random().toString(),
-        text: receivedData, // Emoji burada doğrudan string içinde yer alır
+        text: receivedData,
         isSender: false,
         time: new Date().toLocaleTimeString()
       }]);
@@ -71,7 +75,6 @@ export default function CommunicationScreen({ connectedDevice }: { connectedDevi
     return () => readSub.remove();
   }, [connectedDevice]);
 
-  // KLAVYE YÖNETİMİ: Geri tuşuyla kapanınca boşluğu sıfırlar
   useEffect(() => {
     const hideSub = Keyboard.addListener(
       'keyboardDidHide',
@@ -82,11 +85,6 @@ export default function CommunicationScreen({ connectedDevice }: { connectedDevi
     );
     return () => hideSub.remove();
   }, []);
-
-  /*useEffect(() => {
-    const focused = inputRef.current?.isFocused();
-    console.log("Input focus durumunda mı?", focused);
-  }, [inputRef.current?.isFocused()]);*/
 
 
   // VERİ GÖNDERME: Bluetooth üzerinden yazar
@@ -130,8 +128,8 @@ export default function CommunicationScreen({ connectedDevice }: { connectedDevi
           <Text style={styles.chatTitle}>
             {connectedDevice?.name || "Bağlı Değil"}
           </Text>
-          <Text style={styles.chatStatus}>
-            {connectedDevice ? "çevrimiçi" : "çevrimdışı"}
+          <Text style={connectedDevice ? styles.chatStatusConncected : styles.chatStatusNotConncected}>
+            {connectedDevice ? "Cevrimiçi" : "Çevrimdışı"}
           </Text>
         </View>
       </View>

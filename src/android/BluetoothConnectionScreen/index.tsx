@@ -22,8 +22,10 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import styles from './styles';
 import { useNavigation } from "@react-navigation/native";
-import { AppNavigationProp } from "../App";
-import { useBluetoothStore } from "../App";
+import { 
+  AppNavigationProp,
+  useBluetoothStore 
+} from "../App";
 
 export default function BluetoothConnectionScreen() {
 
