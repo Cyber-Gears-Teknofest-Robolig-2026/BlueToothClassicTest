@@ -13,9 +13,20 @@ import {
   createNativeStackNavigator,
   NativeStackNavigationProp,
 } from "@react-navigation/native-stack";
+import { create } from "zustand";
 import HomeScreen from "./HomeScreen";
 import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
 import CommunicationScreen from "./CommunicationScreen";
+
+type BluetoothStore = {
+  connectedDevice: BluetoothDevice | null;
+  setConnectedDevice: (device: BluetoothDevice | null) => void;
+};
+
+export const useBluetoothStore = create<BluetoothStore>((set) => ({
+  connectedDevice: null,
+  setConnectedDevice: (device) => set({ connectedDevice: device }),
+}));
 
 export type RootStackParamList = {
   Home: undefined;
@@ -29,23 +40,19 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
 
-  const [connectedDevice, setConnectedDevice] =
-    useState<BluetoothDevice | null>(null);
+  const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
+  const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
 
   useEffect(() => {
-
     const disconnectSubscription = RNBluetoothClassic.onDeviceDisconnected(() => {
-        setConnectedDevice(null);
-        Alert.alert(
-          "Bağlantı Koptu ⚠️",
-          "Cihazın gücü kesildi veya menzilden çıkıldı."
-        );
-      });
-
+      setConnectedDevice(null);
+      Alert.alert(
+        "Bağlantı Koptu ⚠️",
+        "Cihazın gücü kesildi veya menzilden çıkıldı."
+      );
+    });
     disconnectSubscription.remove();
   }, []);
-
-  
 
   return (
     <NavigationContainer>
@@ -63,10 +70,7 @@ const AppNavigator = () => {
 
         <Stack.Screen name="BluetoothConnection">
           {() => (
-            <BluetoothConnectionScreen
-              connectedDevice={connectedDevice}
-              setConnectedDevice={setConnectedDevice}
-            />
+            <BluetoothConnectionScreen />
           )}
         </Stack.Screen>
 

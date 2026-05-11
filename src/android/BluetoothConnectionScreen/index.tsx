@@ -13,7 +13,7 @@ import {
   Modal,
   StatusBar,
 } from "react-native";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import RNBluetoothClassic, { BluetoothDevice } from "react-native-bluetooth-classic";
 import { 
   useSafeAreaInsets, 
@@ -23,20 +23,15 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import styles from './styles';
 import { useNavigation } from "@react-navigation/native";
 import { AppNavigationProp } from "../App";
+import { useBluetoothStore } from "../App";
 
-interface BluetoothManagerProps {
-  connectedDevice: BluetoothDevice | null;
-  setConnectedDevice: (device: BluetoothDevice | null) => void;
-}
+export default function BluetoothConnectionScreen() {
 
-export default function BluetoothConnectionScreen({ 
-  connectedDevice, 
-  setConnectedDevice 
-}: BluetoothManagerProps) {
+  const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
+  const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
 
   const navigation = useNavigation<AppNavigationProp>();
 
-  const insets = useSafeAreaInsets();
   const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = useWindowDimensions();
   const isLandscape = SCREEN_WIDTH > SCREEN_HEIGHT;
 
@@ -79,33 +74,6 @@ export default function BluetoothConnectionScreen({
     }).start(() => currentSnapPoint.current = point);
   };
 
-  const openBluetoothModal = async () => {
-    setModalVisible(true);
-    animateToPoint(isLandscape ? SNAP_FULL : SNAP_PARTIAL);
-    setScanning(true);
-    try {
-      await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      ]);
-      const bonded = await RNBluetoothClassic.getBondedDevices();
-      setDevices(bonded.map((d: any) => ({ ...d, bonded: true })));
-
-      setTimeout(async () => {
-        try {
-          await RNBluetoothClassic.cancelDiscovery();
-          const discovered = await RNBluetoothClassic.startDiscovery();
-          const map = new Map();
-          [...bonded, ...discovered].forEach(d => map.set(d.address, { 
-            ...d, bonded: bonded.some(b => b.address === d.address) 
-          }));
-          setDevices(Array.from(map.values()));
-        } catch (e) {} finally { setScanning(false); }
-      }, 500);
-    } catch (err) { setScanning(false); }
-  };
-
   const closeModal = () => {
     Animated.timing(panY, {
       toValue: SNAP_CLOSED,
@@ -118,6 +86,42 @@ export default function BluetoothConnectionScreen({
     try { RNBluetoothClassic.cancelDiscovery(); } catch (e) {}
   };
 
+  const openBluetoothModal = async () => {
+    
+    setModalVisible(true);
+    animateToPoint(isLandscape ? SNAP_FULL : SNAP_PARTIAL);
+
+    setScanning(true);
+
+    const permissionsResult = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+    ]);
+
+    for (const [key, value] of Object.entries(permissionsResult)) {
+      if (value !== 'granted') {
+        Alert.alert('Permissions Required', 'Bluetooth permissions are required to scan and connect to devices.');
+        return;
+      }
+    }
+
+    await RNBluetoothClassic.cancelDiscovery();
+
+    const bonded = await RNBluetoothClassic.getBondedDevices();
+
+    setDevices(bonded.map((d: any) => ({ ...d, bonded: true })));
+
+    const discovered = await RNBluetoothClassic.startDiscovery();
+
+    const map = new Map();
+    [...bonded, ...discovered].forEach(d => map.set(d.address, { 
+      ...d, bonded: bonded.some(b => b.address === d.address) 
+    }));
+    setDevices(Array.from(map.values()));
+
+    setScanning(false);
+  };
+
   const connectToDevice = async (device: BluetoothDevice) => {
     try {
       closeModal();
@@ -125,19 +129,28 @@ export default function BluetoothConnectionScreen({
       const connected = await RNBluetoothClassic.connectToDevice(device.address, {
         connectorType: "rfcomm",
         CONNECTION_TYPE: "binary",
-        delimiter: "\n",     // Satır sonu karakterini bekle (En önemli kısım)
-        encoding: "utf-8",   // UTF-8 formatında çöz
+        delimiter: "\n",
+        encoding: "utf-8",
       });
-      setConnectedDevice(connected as any);
+      setConnectedDevice(connected);
       setIsConnecting(false);
-    } catch (e) { setIsConnecting(false); Alert.alert("Hata", "Bağlantı kurulamadı."); }
+    } 
+    catch (e) { 
+      console.error("Connection error:", e); 
+      setIsConnecting(false); 
+      Alert.alert("Hata", "Bağlantı kurulamadı."); 
+    }
   };
 
   const disconnectDevice = async () => {
-    try { if (connectedDevice) { await RNBluetoothClassic.disconnectFromDevice(connectedDevice.address); setConnectedDevice(null); } } catch (err) {}
+    if (connectedDevice) {
+      await RNBluetoothClassic.disconnectFromDevice(connectedDevice.address);
+      setConnectedDevice(null);
+    }
   };
 
   const renderDevice = ({ item }: { item: BluetoothDevice }) => {
+    
     const isConnected = connectedDevice?.address === item.address;
     const isPaired = item.bonded;
     const cardStyle = isConnected ? styles.connectedCard : isPaired ? styles.pairedCard : styles.newCard;
@@ -176,7 +189,7 @@ export default function BluetoothConnectionScreen({
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingLeft: insets.left, paddingRight: insets.right }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Icon name="bluetooth" size={32} color={isConnecting ? "#F59E0B" : connectedDevice ? "#10B981" : "#EF4444"} />
@@ -217,7 +230,7 @@ export default function BluetoothConnectionScreen({
       <Modal visible={modalVisible} transparent animationType="none" statusBarTranslucent onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
           <Animated.View style={[styles.modalBox, { height: SCREEN_HEIGHT, transform: [{ translateY: panY }] }]}>
-            <View style={{ flex: 1, paddingLeft: insets.left, paddingRight: insets.right }}>
+            <View style={{ flex: 1 }}>
               <View {...panResponder.panHandlers} style={styles.interactiveHeader}>
                 <View style={styles.dragHandle} />
                 <View style={styles.modalHeaderContent}>

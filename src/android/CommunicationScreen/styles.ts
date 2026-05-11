@@ -42,14 +42,14 @@ const styles = StyleSheet.create({
   msgBubble: { 
     maxWidth: "80%", 
     padding: 12, 
-    borderRadius: 16 
+    borderRadius: 15
   },
   msgBubbleMe: { 
     backgroundColor: "#3B82F6", 
     borderBottomRightRadius: 4 
   },
   msgBubbleYou: { 
-    backgroundColor: "#F1F5F9", 
+    backgroundColor: "green", 
     borderBottomLeftRadius: 4 
   },
   msgText: { 

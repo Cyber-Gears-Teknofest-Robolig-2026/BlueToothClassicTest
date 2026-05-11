@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5 
   },
   pairedCard: { 
-    backgroundColor: "#F0F9FF", 
+    backgroundColor: "#FFFFFF", 
     borderColor: "#BAE6FD" 
   },
   newCard: { 
