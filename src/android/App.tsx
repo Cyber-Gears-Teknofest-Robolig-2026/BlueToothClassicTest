@@ -2,21 +2,17 @@ import React, { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-
 import RNBluetoothClassic, {
   BluetoothDevice,
 } from "react-native-bluetooth-classic";
-
 import {
   NavigationContainer,
   useNavigation,
 } from "@react-navigation/native";
-
 import {
   createNativeStackNavigator,
   NativeStackNavigationProp,
 } from "@react-navigation/native-stack";
-
 import HomeScreen from "./HomeScreen";
 import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
 import CommunicationScreen from "./CommunicationScreen";
@@ -31,48 +27,11 @@ export type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-type BluetoothScreenWrapperProps = {
-  connectedDevice: BluetoothDevice | null;
-  setConnectedDevice: React.Dispatch<
-    React.SetStateAction<BluetoothDevice | null>
-  >;
-};
-
-function BluetoothConnectionScreenWrapper({
-  connectedDevice,
-  setConnectedDevice,
-}: BluetoothScreenWrapperProps) {
-  const navigation = useNavigation<AppNavigationProp>();
-
-  return (
-    <BluetoothConnectionScreen
-      onGoBack={() => navigation.goBack()}
-      connectedDevice={connectedDevice}
-      setConnectedDevice={setConnectedDevice}
-    />
-  );
-}
-
 type CommunicationScreenWrapperProps = {
   connectedDevice: BluetoothDevice | null;
 };
 
-function CommunicationScreenWrapper({
-  connectedDevice,
-}: CommunicationScreenWrapperProps) {
-  const navigation = useNavigation<AppNavigationProp>();
-
-  return (
-    <CommunicationScreen
-      onGoBack={() => navigation.goBack()}
-      connectedDevice={connectedDevice}
-    />
-  );
-}
-
 const AppNavigator = () => {
-
-  const navigation = useNavigation<AppNavigationProp>();
 
   const [connectedDevice, setConnectedDevice] =
     useState<BluetoothDevice | null>(null);
@@ -109,7 +68,7 @@ const AppNavigator = () => {
 
         <Stack.Screen name="BluetoothConnection">
           {() => (
-            <BluetoothConnectionScreenWrapper
+            <BluetoothConnectionScreen
               connectedDevice={connectedDevice}
               setConnectedDevice={setConnectedDevice}
             />
@@ -118,7 +77,7 @@ const AppNavigator = () => {
 
         <Stack.Screen name="Communication">
           {() => (
-            <CommunicationScreenWrapper
+            <CommunicationScreen
               connectedDevice={connectedDevice}
             />
           )}

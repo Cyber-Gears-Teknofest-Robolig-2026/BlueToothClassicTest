@@ -15,7 +15,6 @@ import {
   StatusBar,
 } from "react-native";
 import { useState, useRef } from "react";
-import { } from "react-native";
 import RNBluetoothClassic, { BluetoothDevice } from "react-native-bluetooth-classic";
 import { 
   useSafeAreaInsets, 
@@ -23,14 +22,21 @@ import {
 } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import styles from './styles';
+import { useNavigation } from "@react-navigation/native";
+import { AppNavigationProp } from "../App";
 
 interface BluetoothManagerProps {
-  onGoBack: () => void;
   connectedDevice: BluetoothDevice | null;
   setConnectedDevice: (device: BluetoothDevice | null) => void;
 }
 
-export default function BluetoothConnectionScreen({ onGoBack, connectedDevice, setConnectedDevice }: BluetoothManagerProps) {
+export default function BluetoothConnectionScreen({ 
+  connectedDevice, 
+  setConnectedDevice 
+}: BluetoothManagerProps) {
+
+  const navigation = useNavigation<AppNavigationProp>();
+
   const insets = useSafeAreaInsets();
   const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = useWindowDimensions();
   const isLandscape = SCREEN_WIDTH > SCREEN_HEIGHT;
@@ -166,7 +172,7 @@ export default function BluetoothConnectionScreen({ onGoBack, connectedDevice, s
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
       
       <View style={styles.headerWithBack}>
-        <TouchableOpacity onPress={onGoBack} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Icon name="arrow-left" size={26} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Bluetooth Yönetimi</Text>

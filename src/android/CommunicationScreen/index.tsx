@@ -22,6 +22,8 @@ import {
   KeyboardStickyView 
 } from 'react-native-keyboard-controller';
 import styles from './styles';
+import { useNavigation } from "@react-navigation/native";
+import { AppNavigationProp } from "../App";
 
 interface Message {
   id: string;
@@ -30,7 +32,10 @@ interface Message {
   time: string;
 }
 
-export default function CommunicationScreen({ onGoBack, connectedDevice }: { onGoBack: () => void, connectedDevice: BluetoothDevice | null }) {
+export default function CommunicationScreen({ connectedDevice }: { connectedDevice: BluetoothDevice | null }) {
+  
+  const navigation = useNavigation<AppNavigationProp>();
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -118,7 +123,7 @@ export default function CommunicationScreen({ onGoBack, connectedDevice }: { onG
       ]}
     >
       <View style={styles.chatHeader}>
-        <TouchableOpacity onPress={onGoBack} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Icon name="arrow-left" size={24} color="#1E293B" />
         </TouchableOpacity>
 
