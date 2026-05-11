@@ -1,88 +1,115 @@
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-} from "react-native";
+import { Alert } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import RNBluetoothClassic, { BluetoothDevice } from "react-native-bluetooth-classic";
-import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { KeyboardProvider } from "react-native-keyboard-controller";
+
+import RNBluetoothClassic, {
+  BluetoothDevice,
+} from "react-native-bluetooth-classic";
+
 import {
   NavigationContainer,
-  createNavigationContainerRef,
+  useNavigation,
 } from "@react-navigation/native";
+
 import {
   createNativeStackNavigator,
-  NativeStackScreenProps,
+  NativeStackNavigationProp,
 } from "@react-navigation/native-stack";
-import styles from './styles';
-import HomeScreen from './HomeScreen';
-import BluetoothConnectionScreen from './BluetoothConnectionScreen';
-import CommunicationScreen from './CommunicationScreen';
 
-type RootStackParamList = {
+import HomeScreen from "./HomeScreen";
+import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
+import CommunicationScreen from "./CommunicationScreen";
+
+export type RootStackParamList = {
   Home: undefined;
-  Bluetooth: undefined;
+  BluetoothConnection: undefined;
   Communication: undefined;
 };
 
+export type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const navigationRef = createNavigationContainerRef<RootStackParamList>();
+type BluetoothScreenWrapperProps = {
+  connectedDevice: BluetoothDevice | null;
+  setConnectedDevice: React.Dispatch<
+    React.SetStateAction<BluetoothDevice | null>
+  >;
+};
+
+function BluetoothConnectionScreenWrapper({
+  connectedDevice,
+  setConnectedDevice,
+}: BluetoothScreenWrapperProps) {
+  const navigation = useNavigation<AppNavigationProp>();
+
+  return (
+    <BluetoothConnectionScreen
+      onGoBack={() => navigation.goBack()}
+      connectedDevice={connectedDevice}
+      setConnectedDevice={setConnectedDevice}
+    />
+  );
+}
+
+type CommunicationScreenWrapperProps = {
+  connectedDevice: BluetoothDevice | null;
+};
+
+function CommunicationScreenWrapper({
+  connectedDevice,
+}: CommunicationScreenWrapperProps) {
+  const navigation = useNavigation<AppNavigationProp>();
+
+  return (
+    <CommunicationScreen
+      onGoBack={() => navigation.goBack()}
+      connectedDevice={connectedDevice}
+    />
+  );
+}
 
 const AppNavigator = () => {
 
-  const [connectedDevice, setConnectedDevice] = useState<BluetoothDevice | null>(null);
+  const navigation = useNavigation<AppNavigationProp>();
+
+  const [connectedDevice, setConnectedDevice] =
+    useState<BluetoothDevice | null>(null);
 
   useEffect(() => {
-    const disconnectSubscription = RNBluetoothClassic.onDeviceDisconnected(() => {
-      setConnectedDevice(null);
+    const disconnectSubscription =
+      RNBluetoothClassic.onDeviceDisconnected(() => {
+        setConnectedDevice(null);
 
-      Alert.alert(
-        "Bağlantı Koptu ⚠️",
-        "Cihazın gücü kesildi veya menzilden çıkıldı."
-      );
+        Alert.alert(
+          "Bağlantı Koptu ⚠️",
+          "Cihazın gücü kesildi veya menzilden çıkıldı."
+        );
+      });
 
-      if (navigationRef.isReady()) {
-        navigationRef.reset({
-          index: 0,
-          routes: [{ name: "Home" }],
-        });
-      }
-    });
-
-    return () => disconnectSubscription.remove();
+    return () => {
+      disconnectSubscription.remove();
+    };
   }, []);
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer>
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{
           headerShown: false,
-          animation: "slide_from_right",
         }}
       >
         <Stack.Screen name="Home">
-          {({ navigation }: NativeStackScreenProps<RootStackParamList, "Home">) => (
-            <HomeScreen
-              onNavigate={(screen) => {
-                if (screen === "Bluetooth") {
-                  navigation.navigate("Bluetooth");
-                  return;
-                }
-
-                if (screen === "Communication") {
-                  navigation.navigate("Communication");
-                  return;
-                }
-              }}
-            />
+          {() => (
+            <HomeScreen />
           )}
         </Stack.Screen>
 
-        <Stack.Screen name="Bluetooth">
-          {({ navigation }: NativeStackScreenProps<RootStackParamList, "Bluetooth">) => (
-            <BluetoothConnectionScreen
-              onGoBack={() => navigation.goBack()}
+        <Stack.Screen name="BluetoothConnection">
+          {() => (
+            <BluetoothConnectionScreenWrapper
               connectedDevice={connectedDevice}
               setConnectedDevice={setConnectedDevice}
             />
@@ -90,9 +117,8 @@ const AppNavigator = () => {
         </Stack.Screen>
 
         <Stack.Screen name="Communication">
-          {({ navigation }: NativeStackScreenProps<RootStackParamList, "Communication">) => (
-            <CommunicationScreen
-              onGoBack={() => navigation.goBack()}
+          {() => (
+            <CommunicationScreenWrapper
               connectedDevice={connectedDevice}
             />
           )}
