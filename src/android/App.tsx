@@ -27,10 +27,6 @@ export type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-type CommunicationScreenWrapperProps = {
-  connectedDevice: BluetoothDevice | null;
-};
-
 const AppNavigator = () => {
 
   const [connectedDevice, setConnectedDevice] =
