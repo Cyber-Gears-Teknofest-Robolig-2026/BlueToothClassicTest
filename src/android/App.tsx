@@ -33,20 +33,19 @@ const AppNavigator = () => {
     useState<BluetoothDevice | null>(null);
 
   useEffect(() => {
-    const disconnectSubscription =
-      RNBluetoothClassic.onDeviceDisconnected(() => {
-        setConnectedDevice(null);
 
+    const disconnectSubscription = RNBluetoothClassic.onDeviceDisconnected(() => {
+        setConnectedDevice(null);
         Alert.alert(
           "Bağlantı Koptu ⚠️",
           "Cihazın gücü kesildi veya menzilden çıkıldı."
         );
       });
 
-    return () => {
-      disconnectSubscription.remove();
-    };
+    disconnectSubscription.remove();
   }, []);
+
+  
 
   return (
     <NavigationContainer>
