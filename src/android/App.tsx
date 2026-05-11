@@ -1,32 +1,11 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  PermissionsAndroid,
-  Platform,
-  StyleSheet,
   Alert,
-  Modal,
-  ActivityIndicator,
-  Animated,
-  PanResponder,
-  StatusBar,
-  useWindowDimensions,
-  ScrollView,
-  BackHandler,
   Dimensions,
-  TextInput,
-  Keyboard,
-  TouchableWithoutFeedback,
-  InteractionManager,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import RNBluetoothClassic, { BluetoothDevice } from "react-native-bluetooth-classic";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { Buffer } from 'buffer';
-import { KeyboardProvider, KeyboardAvoidingView, KeyboardStickyView } from 'react-native-keyboard-controller';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import {
   NavigationContainer,
   createNavigationContainerRef,
@@ -36,11 +15,9 @@ import {
   NativeStackScreenProps,
 } from "@react-navigation/native-stack";
 import styles from './styles';
-import HomeScreen from './HomeScreen/HomeScreen';
-import BluetoothConnectionScreen from './BluetoothConnectionScreen/BluetoothConnectionScreen';
-import CommunicationScreen from './CommunicationScreen/CommunicationScreen';
-
-const SCREEN_HEIGHT = Dimensions.get("window").height;
+import HomeScreen from './HomeScreen';
+import BluetoothConnectionScreen from './BluetoothConnectionScreen';
+import CommunicationScreen from './CommunicationScreen';
 
 type RootStackParamList = {
   Home: undefined;
@@ -52,10 +29,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-// =====================================================================
-// 4. ANA NAVİGASYON
-// =====================================================================
 const AppNavigator = () => {
+
   const [connectedDevice, setConnectedDevice] = useState<BluetoothDevice | null>(null);
 
   useEffect(() => {
@@ -130,10 +105,7 @@ const AppNavigator = () => {
 
 export default function App() {
   return (
-    <KeyboardProvider
-      statusBarTranslucent={false}
-      navigationBarTranslucent={false}
-    >
+    <KeyboardProvider>
       <SafeAreaProvider>
         <AppNavigator />
       </SafeAreaProvider>

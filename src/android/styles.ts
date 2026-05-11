@@ -2,6 +2,10 @@
 import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
+  
+});
+
+/*const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   mainHeader: { paddingTop: 20, paddingBottom: 10 },
   mainHeaderText: { fontSize: 28, fontWeight: "900", color: "#1E293B" },
@@ -135,6 +139,6 @@ const styles = StyleSheet.create({
   pairedBadgeText: { color: "#0284C7" },
   newBadge: { backgroundColor: "#F1F5F9" },
   newBadgeText: { color: "#64748B" },
-});
+});*/
 
 export default styles;

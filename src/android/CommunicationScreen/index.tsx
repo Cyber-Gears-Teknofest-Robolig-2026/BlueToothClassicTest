@@ -181,11 +181,6 @@ export default function CommunicationScreen({ onGoBack, connectedDevice }: { onG
             ]}
           >
             <View style={[styles.inputBubble, isFocused && styles.inputBubbleFocused]}>
-              <Icon
-                name="emoticon-outline"
-                size={24}
-                color={isFocused ? "#075E54" : "#64748B"}
-              />
 
               <TextInput
                 ref={inputRef}

@@ -72,9 +72,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8 
   },
   sendBtn: { 
-    padding: 8, 
-    backgroundColor: "#3B82F6", 
-    borderRadius: 12 
+    width: 50, 
+    height: 50, 
+    borderRadius: 25, 
+    justifyContent: "center", 
+    alignItems: "center",
   },
   chatContent: { 
     paddingHorizontal: 15, 
@@ -108,10 +110,10 @@ const styles = StyleSheet.create({
   },
   textInput: { 
     flex: 1, 
-    marginLeft: 10, 
+    marginLeft: 1, 
     fontSize: 16, 
     color: "#1E293B", 
-    paddingVertical: 8 
+    paddingVertical: 4 
   },
 });
 
