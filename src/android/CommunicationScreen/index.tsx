@@ -8,7 +8,6 @@ import {
   View,
   TouchableOpacity,
   Text,
-  Platform
 } from "react-native";
 import { 
   useSafeAreaInsets, 
@@ -139,7 +138,6 @@ export default function CommunicationScreen({ connectedDevice }: { connectedDevi
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
         <FlatList

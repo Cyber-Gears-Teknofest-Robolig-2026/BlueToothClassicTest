@@ -3,8 +3,7 @@ import {
   PanResponder, 
   View,
   useWindowDimensions, 
-  PermissionsAndroid, 
-  Platform,
+  PermissionsAndroid,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -85,13 +84,11 @@ export default function BluetoothConnectionScreen({
     animateToPoint(isLandscape ? SNAP_FULL : SNAP_PARTIAL);
     setScanning(true);
     try {
-      if (Platform.OS === "android") {
-        await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        ]);
-      }
+      await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      ]);
       const bonded = await RNBluetoothClassic.getBondedDevices();
       setDevices(bonded.map((d: any) => ({ ...d, bonded: true })));
 
