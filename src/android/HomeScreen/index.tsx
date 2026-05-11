@@ -11,9 +11,39 @@ import styles from "./styles";
 import { useNavigation } from "@react-navigation/native";
 import { AppNavigationProp } from "../App";
 
-export default function HomeScreen() {
-
+const BluetoothConnectionButton = () => {
   const navigation = useNavigation<AppNavigationProp>();
+  return (
+    <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => navigation.navigate('BluetoothConnection')}>
+      <View style={[styles.menuIconCircle, { backgroundColor: "#E0F2FE" }]}>
+        <Icon name="bluetooth" size={30} color="#0284C7" />
+      </View>
+      <View style={styles.menuTextContent}>
+        <Text style={styles.menuTitle}>Bluetooth Bağlantısı</Text>
+        <Text style={styles.menuDesc}>Cihazları tara, eşleş ve yönet</Text>
+      </View>
+      <Icon name="chevron-right" size={24} color="#CBD5E1" />
+    </TouchableOpacity>
+  );
+}
+
+const CommunicationButton = () => {
+  const navigation = useNavigation<AppNavigationProp>();
+  return (
+    <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => navigation.navigate('Communication')}>
+      <View style={[styles.menuIconCircle, { backgroundColor: "#DCFCE7" }]}>
+        <Icon name="swap-horizontal" size={30} color="#15803D" />
+      </View>
+      <View style={styles.menuTextContent}>
+        <Text style={styles.menuTitle}>Cihaz İletişimi</Text>
+        <Text style={styles.menuDesc}>Bağlı cihaz ile veri alışverişi yap</Text>
+      </View>
+      <Icon name="chevron-right" size={24} color="#CBD5E1" />
+    </TouchableOpacity>
+  );
+}
+
+export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={[
@@ -30,28 +60,10 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => navigation.navigate('BluetoothConnection')}>
-          <View style={[styles.menuIconCircle, { backgroundColor: "#E0F2FE" }]}>
-            <Icon name="bluetooth" size={30} color="#0284C7" />
-          </View>
-          <View style={styles.menuTextContent}>
-            <Text style={styles.menuTitle}>Bluetooth Bağlantısı</Text>
-            <Text style={styles.menuDesc}>Cihazları tara, eşleş ve yönet</Text>
-          </View>
-          <Icon name="chevron-right" size={24} color="#CBD5E1" />
-        </TouchableOpacity>
-
-        <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => navigation.navigate('Communication')}>
-          <View style={[styles.menuIconCircle, { backgroundColor: "#DCFCE7" }]}>
-            <Icon name="swap-horizontal" size={30} color="#15803D" />
-          </View>
-          <View style={styles.menuTextContent}>
-            <Text style={styles.menuTitle}>Cihaz İletişimi</Text>
-            <Text style={styles.menuDesc}>Bağlı cihaz ile veri alışverişi yap</Text>
-          </View>
-          <Icon name="chevron-right" size={24} color="#CBD5E1" />
-        </TouchableOpacity>
+        <BluetoothConnectionButton />
+        <CommunicationButton />
       </ScrollView>
+      
     </SafeAreaView>
   );
 };
