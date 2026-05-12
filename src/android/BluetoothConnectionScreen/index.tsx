@@ -1,8 +1,8 @@
 import {
-  Animated, 
-  PanResponder, 
+  Animated,
+  PanResponder,
   View,
-  useWindowDimensions, 
+  useWindowDimensions,
   PermissionsAndroid,
   TouchableOpacity,
   Alert,
@@ -13,6 +13,7 @@ import {
   Modal,
   StatusBar,
   ToastAndroid,
+  Pressable,
 } from "react-native";
 import { useState, useRef, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -42,6 +43,7 @@ export default function BluetoothConnectionScreen() {
 
   const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = useWindowDimensions();
   const isLandscape = SCREEN_WIDTH > SCREEN_HEIGHT;
+  const insets = useSafeAreaInsets();
 
   const SNAP_FULL = 0;
   const SNAP_PARTIAL = SCREEN_HEIGHT * 0.35; 
@@ -92,9 +94,8 @@ export default function BluetoothConnectionScreen() {
         const movedY = currentSnapPoint.current + gestureState.dy;
         const velocity = gestureState.vy;
 
-        if (velocity > 0.5 || movedY > SNAP_PARTIAL + 150) closeModal();
-        else if (velocity < -0.5 || movedY < SNAP_PARTIAL / 2) animateToPoint(SNAP_FULL);
-        else animateToPoint(SNAP_PARTIAL);
+        if (velocity > 0.5 || movedY > SCREEN_HEIGHT * 0.3) closeModal();
+        else animateToPoint(SNAP_FULL);
       }
     })
   ).current;
@@ -121,9 +122,9 @@ export default function BluetoothConnectionScreen() {
   };
 
   const openBluetoothModal = async () => {
-    
+
     setModalVisible(true);
-    animateToPoint(isLandscape ? SNAP_FULL : SNAP_PARTIAL);
+    animateToPoint(SNAP_FULL);
 
     setScanning(true);
 
@@ -209,14 +210,21 @@ export default function BluetoothConnectionScreen() {
   };
 
   const renderDevice = ({ item }: { item: BluetoothDevice }) => {
-    
+
     const isConnected = connectedDevice?.address === item.address;
     const isPaired = item.bonded;
     const cardStyle = isConnected ? styles.connectedCard : isPaired ? styles.pairedCard : styles.newCard;
     const iconColor = isConnected ? "#fff" : isPaired ? "#0284C7" : "#64748B";
 
     return (
-      <TouchableOpacity activeOpacity={0.7} style={[styles.deviceListItem, cardStyle]} onPress={() => isConnected ? disconnectDevice() : connectToDevice(item)}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.deviceListItem,
+          cardStyle,
+          pressed && styles.deviceListItemPressed
+        ]}
+        onPress={() => isConnected ? disconnectDevice() : connectToDevice(item)}
+      >
         <View style={[styles.listIconCircle, isConnected && styles.connectedIconCircle]}>
           <Icon name={isConnected ? "bluetooth-connect" : "bluetooth"} size={22} color={iconColor} />
         </View>
@@ -232,7 +240,7 @@ export default function BluetoothConnectionScreen() {
           </View>
         </View>
         <Icon name={isConnected ? "link-off" : "chevron-right"} size={24} color={isConnected ? "#EF4444" : isPaired ? "#7DD3FC" : "#CBD5E1"} />
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
@@ -300,7 +308,7 @@ export default function BluetoothConnectionScreen() {
           </TouchableOpacity>
         )}
 
-        {lastConnectedDevice && !connectedDevice && (
+        {lastConnectedDevice && !connectedDevice && !isConnecting && (
           <TouchableOpacity
             style={styles.lastDeviceCard}
             onPress={() => connectToDevice(lastConnectedDevice)}
@@ -354,7 +362,7 @@ export default function BluetoothConnectionScreen() {
                 keyExtractor={(item) => item.address}
                 renderItem={renderDevice}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.listContentStyle}
+                contentContainerStyle={[styles.listContentStyle, { paddingBottom: insets.bottom + 35, paddingTop: insets.top - 35 }]}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
                 ListEmptyComponent={!scanning ? <Text style={styles.emptyStateText}>Cihaz bulunamadı</Text> : null}
               />

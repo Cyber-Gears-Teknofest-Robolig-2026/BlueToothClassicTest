@@ -299,25 +299,46 @@ const styles = StyleSheet.create({
     marginTop: 50 
   },
 ///////////////////////////////////
-  connectedCard: { 
-    backgroundColor: "#F0FDF4", 
-    borderColor: "#86EFAC", 
-    borderWidth: 1.5 
+  connectedCard: {
+    backgroundColor: "#F0FDF4",
+    borderColor: "#86EFAC",
+    borderWidth: 1.5,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  pairedCard: { 
-    backgroundColor: "#FFFFFF", 
-    borderColor: "#BAE6FD" 
+  pairedCard: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#BAE6FD",
+    borderWidth: 1.5,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  newCard: { 
-    backgroundColor: "#FFFFFF", 
-    borderColor: "#E2E8F0" 
+  newCard: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#E2E8F0",
+    borderWidth: 1.5,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  deviceListItem: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    borderRadius: 24, 
-    padding: 16, 
-    borderWidth: 1 
+  deviceListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+  },
+  deviceListItemPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
   },
   listIconCircle: { 
     padding: 12, 
