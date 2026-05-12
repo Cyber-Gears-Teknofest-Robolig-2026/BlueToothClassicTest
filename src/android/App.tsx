@@ -19,14 +19,29 @@ import HomeScreen from "./HomeScreen";
 import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
 import CommunicationScreen from "./CommunicationScreen";
 
+interface Message {
+  id: number;
+  text: string;
+  mode: "sent" | "received";
+  time: string;
+}
+
 type BluetoothStore = {
   connectedDevice: BluetoothDevice | null;
   setConnectedDevice: (device: BluetoothDevice | null) => void;
+  messages: Message[];
+  setMessages: (messages: Message[]) => void;
+  manuallyDisconnected: boolean;
+  setManuallyDisconnected: (manuallyDisconnected: boolean) => void;
 };
 
 export const useBluetoothStore = create<BluetoothStore>((set) => ({
   connectedDevice: null,
   setConnectedDevice: (device) => set({ connectedDevice: device }),
+  messages: [],
+  setMessages: (messages: Message[]) => set({ messages }),
+  manuallyDisconnected: false,
+  setManuallyDisconnected: (manuallyDisconnected: boolean) => set({ manuallyDisconnected }),
 }));
 
 export type RootStackParamList = {
@@ -43,14 +58,20 @@ const AppNavigator = () => {
 
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
   const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
+  const manuallyDisconnected = useBluetoothStore((state) => state.manuallyDisconnected);
+  const setManuallyDisconnected = useBluetoothStore((state) => state.setManuallyDisconnected);
 
   useEffect(() => {
     const disconnectSubscription = RNBluetoothClassic.onDeviceDisconnected(() => {
       setConnectedDevice(null);
-      Alert.alert(
-        "Bağlantı Koptu ⚠️",
-        "Cihazın gücü kesildi veya menzilden çıkıldı."
-      );
+      const { manuallyDisconnected } = useBluetoothStore.getState();
+      if (!manuallyDisconnected) {
+        Alert.alert(
+          "Bağlantı Koptu ⚠️",
+          "Cihazın gücü kesildi veya menzilden çıkıldı."
+        );
+      }
+      setManuallyDisconnected(false);
     });
     return () => disconnectSubscription.remove();
   }, []);

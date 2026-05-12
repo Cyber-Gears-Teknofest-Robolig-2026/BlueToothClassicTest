@@ -24,8 +24,51 @@ const styles = StyleSheet.create({
     fontWeight: "800", 
     color: "#1E293B" 
   },
-  headerSpacer: { 
-    width: 40 
+  headerSpacer: {
+    width: 40
+  },
+  lastDeviceCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 10,
+    padding: 18,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#0284C7",
+    elevation: 3
+  },
+  lastDeviceIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#E0F2FE",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  lastDeviceTextSection: {
+    flex: 1,
+    marginLeft: 15,
+    gap: 2
+  },
+  lastDeviceLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#0284C7",
+    letterSpacing: 0.5,
+    textTransform: "uppercase"
+  },
+  lastDeviceName: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1E293B"
+  },
+  lastDeviceAddress: {
+    fontSize: 12,
+    color: "#64748B",
+    fontFamily: "monospace"
   },
   infoCard: { 
     backgroundColor: "#fff", 
@@ -127,10 +170,30 @@ const styles = StyleSheet.create({
     borderRadius: 18, 
     alignItems: "center" 
   },
-  scanBtnText: { 
-    color: "#fff", 
-    fontWeight: "800", 
-    fontSize: 16 
+  scanBtnText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 16
+  },
+  communicationBtn: {
+    backgroundColor: "#10B981",
+    marginHorizontal: 60,
+    marginTop: 10,
+    marginBottom: 10,
+    padding: 18,
+    borderRadius: 18,
+    elevation: 3
+  },
+  communicationBtnContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10
+  },
+  communicationBtnText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 16
   },
   disconnectBtn: { 
     marginTop: 12, 

@@ -35,10 +35,14 @@ interface Message {
 }
 
 export default function CommunicationScreen() {
+
   const navigation = useNavigation<AppNavigationProp>();
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const messages = useBluetoothStore((state) => state.messages);
+  const setMessages = useBluetoothStore((state) => state.setMessages);
+
+  //const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -84,7 +88,7 @@ export default function CommunicationScreen() {
     };
   }, [scrollToBottom]);
 
-  useEffect(() => {
+  /*useEffect(() => {
     const readSubscription = connectedDevice?.onDataReceived((event) => {
       const receivedData = Buffer.from(event.data, "base64")
         .toString("utf-8")
@@ -92,8 +96,10 @@ export default function CommunicationScreen() {
 
       if (!receivedData) return;
 
-      setMessages((prev) => [
-        ...prev,
+      console.log("messages:", messages);
+
+      setMessages([
+        ...messages,
         {
           id: currentMessageId.current,
           text: receivedData,
@@ -105,13 +111,40 @@ export default function CommunicationScreen() {
         },
       ]);
 
+      console.log("Message ID:", currentMessageId.current);
+
       currentMessageId.current++;
     });
 
     return () => {
       readSubscription?.remove();
     };
-  }, [connectedDevice]);
+  }, [connectedDevice]);*/
+
+  const readSubscription = connectedDevice?.onDataReceived((event) => {
+      const receivedData = Buffer.from(event.data, "base64")
+        .toString("utf-8")
+        .trim();
+
+      if (!receivedData) return;
+
+      setMessages([
+        ...messages,
+        {
+          id: currentMessageId.current,
+          text: receivedData,
+          mode: "received",
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      ]);
+
+      console.log("Message ID:", currentMessageId.current);
+
+      currentMessageId.current++;
+    });
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -129,8 +162,8 @@ export default function CommunicationScreen() {
         await connectedDevice.write(sendedData + "\r\n");
       }
 
-      setMessages((prev) => [
-        ...prev,
+      setMessages([
+        ...messages,
         {
           id: currentMessageId.current,
           text: sendedData,
@@ -142,7 +175,10 @@ export default function CommunicationScreen() {
         },
       ]);
 
+      console.log("Message ID:", currentMessageId.current);
+
       currentMessageId.current++;
+
       setInputText("");
       scrollToBottom(true, 150);
     } catch (e) {

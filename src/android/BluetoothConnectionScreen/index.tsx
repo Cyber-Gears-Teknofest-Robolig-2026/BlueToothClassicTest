@@ -12,8 +12,10 @@ import {
   ScrollView,
   Modal,
   StatusBar,
+  ToastAndroid,
 } from "react-native";
 import { useState, useRef, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import RNBluetoothClassic, { BluetoothDevice } from "react-native-bluetooth-classic";
 import { 
   useSafeAreaInsets, 
@@ -31,6 +33,10 @@ export default function BluetoothConnectionScreen() {
 
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
   const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
+  const messages = useBluetoothStore((state) => state.messages);
+  const setMessages = useBluetoothStore((state) => state.setMessages);
+  const manuallyDisconnected = useBluetoothStore((state) => state.manuallyDisconnected);
+  const setManuallyDisconnected = useBluetoothStore((state) => state.setManuallyDisconnected);
 
   const navigation = useNavigation<AppNavigationProp>();
 
@@ -45,9 +51,35 @@ export default function BluetoothConnectionScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [lastConnectedDevice, setLastConnectedDevice] = useState<BluetoothDevice | null>(null);
 
   const panY = useRef(new Animated.Value(SNAP_CLOSED)).current;
   const currentSnapPoint = useRef(SNAP_CLOSED);
+
+  useEffect(() => {
+    loadLastConnectedDevice();
+  }, []);
+
+  const loadLastConnectedDevice = async () => {
+    try {
+      const lastDeviceJson = await AsyncStorage.getItem('lastConnectedDevice');
+      if (lastDeviceJson) {
+        const lastDevice = JSON.parse(lastDeviceJson);
+        setLastConnectedDevice(lastDevice);
+      }
+    } catch (error) {
+      console.error('Error loading last connected device:', error);
+    }
+  };
+
+  const saveLastConnectedDevice = async (device: BluetoothDevice) => {
+    try {
+      await AsyncStorage.setItem('lastConnectedDevice', JSON.stringify(device));
+      setLastConnectedDevice(device);
+    } catch (error) {
+      console.error('Error saving last connected device:', error);
+    }
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -137,19 +169,42 @@ export default function BluetoothConnectionScreen() {
         encoding: "utf-8",
       });
       setConnectedDevice(connected);
+      if (connected) {
+        setMessages([]);
+        saveLastConnectedDevice(device);
+      }
       setIsConnecting(false);
-    } 
-    catch (e) { 
-      console.error("Connection error:", e); 
-      setIsConnecting(false); 
-      Alert.alert("Hata", "Bağlantı kurulamadı."); 
+    }
+    catch (e) {
+      console.error("Connection error:", e);
+      setIsConnecting(false);
+      Alert.alert("Hata", "Bağlantı kurulamadı.");
     }
   };
 
   const disconnectDevice = async () => {
     if (connectedDevice) {
-      await RNBluetoothClassic.disconnectFromDevice(connectedDevice.address);
-      setConnectedDevice(null);
+      Alert.alert(
+        "Bağlantıyı Kes",
+        "Bağlantı kesilecek. Emin misiniz?",
+        [
+          {
+            text: "Vazgeç",
+            style: "cancel",
+          },
+          {
+            text: "Kes",
+            style: "destructive",
+            onPress: async () => {
+              setManuallyDisconnected(true);
+              await connectedDevice.disconnect();
+              setConnectedDevice(null);
+              setMessages([]);
+              ToastAndroid.show("Bağlantı kesildi", ToastAndroid.SHORT);
+            },
+          },
+        ]
+      );
     }
   };
 
@@ -194,6 +249,7 @@ export default function BluetoothConnectionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Icon name="bluetooth" size={32} color={isConnecting ? "#F59E0B" : connectedDevice ? "#10B981" : "#EF4444"} />
@@ -229,6 +285,37 @@ export default function BluetoothConnectionScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {connectedDevice && !isConnecting && (
+          <TouchableOpacity style={styles.communicationBtn} onPress={() => navigation.navigate('Communication')}>
+            <View style={styles.communicationBtnContent}>
+              <Icon name="swap-horizontal" size={28} color="#fff" />
+              <Text style={styles.communicationBtnText}>İletişim Ekranına Git</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {lastConnectedDevice && !connectedDevice && (
+          <TouchableOpacity
+            style={styles.lastDeviceCard}
+            onPress={() => connectToDevice(lastConnectedDevice)}
+            disabled={isConnecting}
+          >
+            <View style={styles.lastDeviceIconCircle}>
+              <Icon name="history" size={24} color="#0284C7" />
+            </View>
+            <View style={styles.lastDeviceTextSection}>
+              <Text style={styles.lastDeviceLabel}>Son Bağlanan Cihaz</Text>
+              <Text style={styles.lastDeviceName}>{lastConnectedDevice.name || "Bilinmeyen Cihaz"}</Text>
+              <Text style={styles.lastDeviceAddress}>{lastConnectedDevice.address}</Text>
+            </View>
+            {isConnecting ? (
+              <ActivityIndicator size="small" color="#0284C7" />
+            ) : (
+              <Icon name="flash" size={24} color="#0284C7" />
+            )}
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       <Modal visible={modalVisible} transparent animationType="none" statusBarTranslucent onRequestClose={closeModal}>
