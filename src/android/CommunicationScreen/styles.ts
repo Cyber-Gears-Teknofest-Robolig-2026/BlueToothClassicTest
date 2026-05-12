@@ -1,124 +1,150 @@
-
 import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
-  chatMainContainer: { 
-    flex: 1, 
-    backgroundColor: "#FFFFFF" 
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
   },
-  chatHeader: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    backgroundColor: "#fff", 
-    padding: 15, 
-    borderBottomWidth: 1, 
-    borderBottomColor: "#F1F5F9" 
-  },
-  chatTitle: { 
-    fontSize: 17, 
-    fontWeight: "800", 
-    color: "#1E293B" 
-  },
-  chatStatusConncected: { 
-    fontSize: 12, 
-    color: "#10B981", 
-    fontWeight: "600" 
-  },
-  chatStatusNotConncected: { 
-    fontSize: 12, 
-    color: "#EF4444", 
-    fontWeight: "600" 
-  },
-  backBtn: { 
-    padding: 8, 
-    backgroundColor: "#F1F5F9", 
-    borderRadius: 12 
-  },
-  msgWrap: { 
-    flexDirection: "row", 
-    marginBottom: 8 
-  },
-  msgWrapMe: { 
-    justifyContent: "flex-end" 
-  },
-  msgWrapYou: { 
-    justifyContent: "flex-start" 
-  },
-  msgBubble: { 
-    maxWidth: "80%", 
-    padding: 12, 
-    borderRadius: 15
-  },
-  msgBubbleMe: { 
-    backgroundColor: "#3B82F6", 
-    borderBottomRightRadius: 4 
-  },
-  msgBubbleYou: { 
-    backgroundColor: "green", 
-    borderBottomLeftRadius: 4 
-  },
-  msgText: { 
-    color: "#FFFFFF", 
-    fontSize: 14 
-  },
-  inputContainer: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    backgroundColor: "#F8FAFC", 
-    borderRadius: 24, 
-    margin: 12, 
-    paddingHorizontal: 12, 
-    paddingVertical: 8 
-  },
-  input: { 
-    flex: 1, 
-    fontSize: 14, 
-    color: "#1E293B", 
-    paddingVertical: 8 
-  },
-  sendBtn: { 
-    width: 50, 
-    height: 50, 
-    borderRadius: 25, 
-    justifyContent: "center", 
-    alignItems: "center",
-  },
-  chatContent: { 
-    paddingHorizontal: 15, 
-    paddingVertical: 20 
-  },
-  inputRowContainer: {
+  header: {
     flexDirection: "row",
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 8,
     alignItems: "center",
-    gap: 8,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5E5",
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#000000",
+  },
+  headerStatusConnected: {
+    fontSize: 13,
+    color: "green",
+    fontWeight: "500",
+  },
+  headerStatusNotConnected: {
+    fontSize: 13,
+    color: "red",
+    fontWeight: "500",
+  },
+  clearButton: {
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  messagesContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  messagesContent: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    flexGrow: 1,
+  },
+  messageWrapper: {
+    flexDirection: "row",
+    marginBottom: 4,
+    paddingHorizontal: 8,
+  },
+  messageWrapperSent: {
+    justifyContent: "flex-end",
+  },
+  messageWrapperReceived: {
+    justifyContent: "flex-start",
+  },
+  messageBubble: {
+    maxWidth: "75%",
+    padding: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
+  },
+  messageBubbleSent: {
+    backgroundColor: "#DCF8C6",
+    borderBottomRightRadius: 2,
+  },
+  messageBubbleReceived: {
+    backgroundColor: "#DDDDDD",
+    borderBottomLeftRadius: 2,
+  },
+  messageText: {
+    fontSize: 15,
+    color: "#000000",
+    lineHeight: 20,
+  },
+  messageTimeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: 4,
+  },
+  messageTime: {
+    fontSize: 11,
+    color: "#667781",
+    marginRight: 4,
+  },
+  messageCheck: {
+    marginLeft: 2,
+  },
+  inputContainer: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-    backgroundColor: "#FFFFFF",
+    borderTopColor: "#ECE5DD",
   },
-  inputBubble: { 
-    flex: 1, 
-    flexDirection: "row", 
-    backgroundColor: "#F1F5F9", 
-    borderRadius: 25, 
-    paddingHorizontal: 15, 
-    paddingVertical: 10, 
-    alignItems: "center", 
-    borderWidth: 1, 
-    borderColor: "transparent" 
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  inputBubbleFocused: { 
-    borderColor: "#075E54", 
-    backgroundColor: "#FFFFFF",
+  attachButton: {
+    padding: 4,
+    marginRight: 8,
   },
-  textInput: { 
-    flex: 1, 
-    marginLeft: 1, 
-    fontSize: 16, 
-    color: "#1E293B", 
-    paddingVertical: 4 
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#000000",
+    maxHeight: 100,
+    paddingHorizontal: 4,
+  },
+  sendButtonDisabled: {
+    backgroundColor: "#9CA3AF",
+    borderRadius: 20,
+    padding: 8,
+    marginLeft: 8,
+  },
+  sendButtonEnabled: {
+    backgroundColor: "#00AA00",
+    borderRadius: 20,
+    padding: 8,
+    marginLeft: 8,
+  },
+  cameraButton: {
+    padding: 4,
+    marginLeft: 8,
   },
 });
 

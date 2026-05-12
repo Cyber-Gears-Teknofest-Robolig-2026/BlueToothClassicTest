@@ -1,223 +1,305 @@
-import { BluetoothDevice } from "react-native-bluetooth-classic";
-import { useState, useEffect, useRef } from "react";
-import { 
-  FlatList, 
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  FlatList,
   TextInput,
   Keyboard,
   Alert,
   View,
   TouchableOpacity,
   Text,
+  ToastAndroid,
+  ScrollView,
 } from "react-native";
-import { 
-  useSafeAreaInsets, 
-  SafeAreaView 
+import {
+  useSafeAreaInsets,
+  SafeAreaView,
 } from "react-native-safe-area-context";
-import RNBluetoothClassic from "react-native-bluetooth-classic";
-import { Buffer } from 'buffer';
+import { Buffer } from "buffer";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { 
-  KeyboardAvoidingView, 
-  KeyboardStickyView 
-} from 'react-native-keyboard-controller';
-import styles from './styles';
+import {
+  KeyboardAvoidingView,
+  KeyboardStickyView,
+} from "react-native-keyboard-controller";
+import styles from "./styles";
 import { useNavigation } from "@react-navigation/native";
-import { 
+import {
   AppNavigationProp,
-  useBluetoothStore 
+  useBluetoothStore,
 } from "../App";
 
 interface Message {
-  id: string;
+  id: number;
   text: string;
-  isSender: boolean;
+  mode: "sent" | "received";
   time: string;
 }
 
 export default function CommunicationScreen() {
-  
   const navigation = useNavigation<AppNavigationProp>();
-
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
-  const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
-  
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  const flatListRef = useRef<FlatList<Message>>(null);
   const inputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
 
-  // VERİ OKUMA: Cihazdan gelen mesajları dinler
-  useEffect(() => {
-    if (!connectedDevice) return;
-    
-    const readSub = RNBluetoothClassic.onDeviceRead(connectedDevice.address, (event) => {
+  const currentMessageId = useRef(0);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    console.log("EVENT:", JSON.stringify(event));
-    if (event.data) {
-      console.log("DATA:", event.data);
-      const receivedData = event.data.trim();
-
-      const bytes = Buffer.from(event.data, "base64");
-
-      console.log("Value:", bytes.toString("utf8"));
-      
-      setMessages(prev => [...prev, {
-        id: Math.random().toString(),
-        text: receivedData,
-        isSender: false,
-        time: new Date().toLocaleTimeString()
-      }]);
+  const scrollToBottom = useCallback((animated = true, delay = 100) => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
     }
-  });
 
-    return () => readSub.remove();
+    requestAnimationFrame(() => {
+      scrollTimeoutRef.current = setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated });
+      }, delay);
+    });
+  }, []);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      scrollToBottom(true, 300);
+    });
+
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+      setIsFocused(false);
+      scrollToBottom(true, 100);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [scrollToBottom]);
+
+  useEffect(() => {
+    const readSubscription = connectedDevice?.onDataReceived((event) => {
+      const receivedData = Buffer.from(event.data, "base64")
+        .toString("utf-8")
+        .trim();
+
+      if (!receivedData) return;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: currentMessageId.current,
+          text: receivedData,
+          mode: "received",
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      ]);
+
+      currentMessageId.current++;
+    });
+
+    return () => {
+      readSubscription?.remove();
+    };
   }, [connectedDevice]);
 
   useEffect(() => {
-    const hideSub = Keyboard.addListener(
-      'keyboardDidHide',
-      () => {
-        setIsFocused(false);
-        inputRef.current?.blur();
-      }
-    );
-    return () => hideSub.remove();
-  }, []);
+    if (messages.length > 0) {
+      scrollToBottom(true, 100);
+    }
+  }, [messages, scrollToBottom]);
 
-
-  // VERİ GÖNDERME: Bluetooth üzerinden yazar
   const sendMessage = async () => {
-    if (!inputText.trim() || !connectedDevice) return;
-    
-    const msg = inputText.trim();
-    setInputText(""); // Input'u hemen temizle (UX)
+    if (!inputText.trim()) return;
+
+    const sendedData = inputText.trim();
 
     try {
-      // Bluetooth terminal standartı için mesaj sonuna \r\n ekliyoruz
-      await RNBluetoothClassic.writeToDevice(connectedDevice.address, msg + "\r\n");
-      
-      setMessages(prev => [...prev, {
-        id: Math.random().toString(),
-        text: msg,
-        isSender: true,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
+      if (connectedDevice) {
+        await connectedDevice.write(sendedData + "\r\n");
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: currentMessageId.current,
+          text: sendedData,
+          mode: "sent",
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      ]);
+
+      currentMessageId.current++;
+      setInputText("");
+      scrollToBottom(true, 150);
     } catch (e) {
       Alert.alert("Hata", "Veri gönderilemedi. Cihaz bağlı mı?");
     }
   };
 
+  const clearMessages = () => {
+    if (messages.length === 0) {
+      ToastAndroid.show("Silinecek mesaj yok", ToastAndroid.SHORT);
+      return;
+    }
+
+    Alert.alert(
+      "Mesajları Temizle",
+      "Ekrandaki bütün mesajlar silinecek. Emin misiniz?",
+      [
+        {
+          text: "Vazgeç",
+          style: "cancel",
+        },
+        {
+          text: "Sil",
+          style: "destructive",
+          onPress: () => {
+            setMessages([]);
+            currentMessageId.current = 0;
+            ToastAndroid.show("Mesajlar Silindi", ToastAndroid.SHORT);
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <SafeAreaView
-      style={styles.chatMainContainer}
-      edges={[
-        "top",
-        "left",
-        "right",
-        "bottom"
-      ]}
-    >
-      <View style={styles.chatHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="arrow-left" size={24} color="#1E293B" />
+    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Icon name="arrow-left" size={24} color="#000000" />
         </TouchableOpacity>
 
-        <View style={{ marginLeft: 12 }}>
-          <Text style={styles.chatTitle}>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerTitle}>
             {connectedDevice?.name || "Bağlı Değil"}
           </Text>
-          <Text style={connectedDevice ? styles.chatStatusConncected : styles.chatStatusNotConncected}>
-            {connectedDevice ? "Cevrimiçi" : "Çevrimdışı"}
+          <Text 
+            style={
+              connectedDevice ? styles.headerStatusConnected : styles.headerStatusNotConnected
+            }
+          >
+            {connectedDevice ? "Çevrimiçi" : "Çevrimdışı"}
           </Text>
         </View>
+
+        <TouchableOpacity
+          onPress={clearMessages}
+          style={styles.clearButton}
+        >
+          <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>
+            Mesajları Temizle
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={styles.keyboardAvoidingView}
+        behavior="padding"
         keyboardVerticalOffset={0}
       >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={item => item.id}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="none"
-          renderItem={({ item }) => (
-            <View
-              style={[
-                styles.msgWrap,
-                item.isSender ? styles.msgWrapMe : styles.msgWrapYou,
-              ]}
-            >
+        <View style={styles.messagesContainer}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item.id.toString()}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="interactive"
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
+            contentContainerStyle={styles.messagesContent}
+            renderItem={({ item }) => (
               <View
                 style={[
-                  styles.msgBubble,
-                  item.isSender ? styles.msgBubbleMe : styles.msgBubbleYou,
+                  styles.messageWrapper,
+                  item.mode === "sent"
+                    ? styles.messageWrapperSent
+                    : styles.messageWrapperReceived,
                 ]}
               >
-                <Text style={styles.msgText}>{item.text}</Text>
+                <View
+                  style={[
+                    styles.messageBubble,
+                    item.mode === "sent"
+                      ? styles.messageBubbleSent
+                      : styles.messageBubbleReceived,
+                  ]}
+                >
+                  <Text style={styles.messageText} selectable={true}>{item.text}</Text>
+                  <View style={styles.messageTimeContainer}>
+                    <Text style={styles.messageTime}>{item.time}</Text>
+                  </View>
+                </View>
               </View>
-            </View>
-          )}
-          contentContainerStyle={styles.chatContent}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
-        />
+            )}
+            onContentSizeChange={() => {
+              scrollToBottom(true, 100);
+            }}
+          />
+        </View>
 
-        <KeyboardStickyView 
-          offset={{
-            opened: insets.bottom,
-            closed: 0,
-          }}
-        >
-          <View
-            style={[
-              styles.inputRowContainer,
-              {
-                backgroundColor: "#FFFFFF",
-              },
-            ]}
-          >
-            <View style={[styles.inputBubble, isFocused && styles.inputBubbleFocused]}>
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
 
-              <TextInput
-                ref={inputRef}
-                style={styles.textInput}
-                placeholder="Mesaj yazın..."
-                placeholderTextColor="#94A3B8"
-                value={inputText}
-                onChangeText={setInputText}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                autoCorrect={false}
-                blurOnSubmit={false}
-                returnKeyType="send"
-                onSubmitEditing={sendMessage}
-                underlineColorAndroid="transparent"
-                disableFullscreenUI={true}
-              />
-            </View>
+            <TextInput
+              ref={inputRef}
+              style={styles.textInput}
+              placeholder="Mesaj yazın..."
+              placeholderTextColor="#54656F"
+              value={inputText}
+              onChangeText={setInputText}
+              onFocus={() => {
+                setIsFocused(true);
+                scrollToBottom(true, 150);
+              }}
+              onBlur={() => setIsFocused(false)}
+              maxLength={1000}
+              returnKeyType="send"
+              onSubmitEditing={sendMessage}
+            />
 
             <TouchableOpacity
               style={[
-                styles.sendBtn,
-                {
-                  backgroundColor:
-                    inputText.trim() && connectedDevice ? "#075E54" : "#94A3B8",
-                },
+                !inputText.trim() ? styles.sendButtonDisabled : styles.sendButtonEnabled,
               ]}
               onPress={sendMessage}
-              disabled={!inputText.trim() || !connectedDevice}
-              activeOpacity={0.8}
+              disabled={!inputText.trim()}
             >
-              <Icon name="send" size={22} color="#FFFFFF" />
+              <Icon name="send" size={26} color="#FFFFFF" />
             </TouchableOpacity>
+
+            {/*{inputText.trim() ? (
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={sendMessage}
+              >
+                <Icon name="send" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.cameraButton}>
+                <Icon name="camera" size={24} color="#54656F" />
+              </TouchableOpacity>
+            )}*/}
           </View>
-        </KeyboardStickyView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}

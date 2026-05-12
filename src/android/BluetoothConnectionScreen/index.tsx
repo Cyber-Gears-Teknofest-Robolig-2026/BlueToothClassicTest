@@ -130,7 +130,9 @@ export default function BluetoothConnectionScreen() {
       setIsConnecting(true);
       const connected = await RNBluetoothClassic.connectToDevice(device.address, {
         connectorType: "rfcomm",
-        CONNECTION_TYPE: "binary",
+        connectionType: "binary",
+        //READ_SIZE: 1,
+        //READ_TIMEOUT: 0,
         delimiter: "\n",
         encoding: "utf-8",
       });

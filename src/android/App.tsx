@@ -13,6 +13,7 @@ import {
   createNativeStackNavigator,
   NativeStackNavigationProp,
 } from "@react-navigation/native-stack";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { create } from "zustand";
 import HomeScreen from "./HomeScreen";
 import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
@@ -51,38 +52,36 @@ const AppNavigator = () => {
         "Cihazın gücü kesildi veya menzilden çıkıldı."
       );
     });
-    return () => {
-      disconnectSubscription.remove();
-    };
+    return () => disconnectSubscription.remove();
   }, []);
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Home"
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen name="Home">
-          {() => (
-            <HomeScreen />
-          )}
-        </Stack.Screen>
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName="Home"
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
+          <Stack.Screen name="Home">
+            {() => (
+              <HomeScreen />
+            )}
+          </Stack.Screen>
 
-        <Stack.Screen name="BluetoothConnection">
-          {() => (
-            <BluetoothConnectionScreen />
-          )}
-        </Stack.Screen>
+          <Stack.Screen name="BluetoothConnection">
+            {() => (
+              <BluetoothConnectionScreen />
+            )}
+          </Stack.Screen>
 
-        <Stack.Screen name="Communication">
-          {() => (
-            <CommunicationScreen />
-          )}
-        </Stack.Screen>
-      </Stack.Navigator>
-    </NavigationContainer>
+          <Stack.Screen name="Communication">
+            {() => (
+              <CommunicationScreen />
+            )}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
   );
 };
 
