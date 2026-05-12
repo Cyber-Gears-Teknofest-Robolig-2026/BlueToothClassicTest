@@ -245,7 +245,12 @@ export default function BluetoothConnectionScreen() {
           <Icon name="arrow-left" size={26} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Bluetooth Yönetimi</Text>
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity onPress={() => navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        })} style={styles.homeBtn}>
+          <Icon name="home" size={24} color="#1E293B" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>

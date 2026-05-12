@@ -6,21 +6,27 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: "column",
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E5E5",
   },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+    position: "relative",
+  },
   backButton: {
     padding: 8,
-    marginRight: 8,
+    position: "absolute",
+    left: 0,
   },
   headerInfo: {
-    flex: 1,
-    marginLeft: 8,
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 18,
@@ -36,6 +42,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "red",
     fontWeight: "500",
+  },
+  headerIcons: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerIconButton: {
+    padding: 10,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 14,
+  },
+  headerIconButtonCog: {
+    padding: 10,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+  },
+  headerIconButtonBluetoothOff: {
+    padding: 10,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+  },
+  headerIconButtonBluetoothConnect: {
+    padding: 10,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+  },
+  headerIconButtonTrash: {
+    padding: 10,
+    backgroundColor: "#FF0000",
+    borderRadius: 14,
   },
   clearButton: {
     backgroundColor: "#EF4444",
@@ -128,7 +165,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#000000",
     maxHeight: 100,
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
   },
   sendButtonDisabled: {
     backgroundColor: "#9CA3AF",

@@ -14,10 +14,15 @@ const styles = StyleSheet.create({
     paddingTop: 15, 
     paddingBottom: 10 
   },
-  backBtn: { 
-    padding: 8, 
-    backgroundColor: "#F1F5F9", 
-    borderRadius: 12 
+  backBtn: {
+    padding: 8,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12
+  },
+  homeBtn: {
+    padding: 8,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12
   },
   headerTitle: { 
     fontSize: 18, 

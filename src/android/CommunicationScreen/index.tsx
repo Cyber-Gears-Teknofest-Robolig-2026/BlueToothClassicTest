@@ -41,6 +41,10 @@ export default function CommunicationScreen() {
 
   const messages = useBluetoothStore((state) => state.messages);
   const setMessages = useBluetoothStore((state) => state.setMessages);
+  const manuallyDisconnected = useBluetoothStore((state) => state.manuallyDisconnected);
+  const setManuallyDisconnected = useBluetoothStore((state) => state.setManuallyDisconnected);
+  const connectedDeviceName = useBluetoothStore((state) => state.connectedDevice);
+  const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
 
   //const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -51,6 +55,7 @@ export default function CommunicationScreen() {
   const inputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
+  const readSubscriptionRef = useRef<any>(null);
 
   const currentMessageId = useRef(0);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -88,69 +93,47 @@ export default function CommunicationScreen() {
     };
   }, [scrollToBottom]);
 
-  /*useEffect(() => {
-    const readSubscription = connectedDevice?.onDataReceived((event) => {
-      const receivedData = Buffer.from(event.data, "base64")
-        .toString("utf-8")
-        .trim();
-
-      if (!receivedData) return;
-
-      console.log("messages:", messages);
-
-      setMessages([
-        ...messages,
-        {
-          id: currentMessageId.current,
-          text: receivedData,
-          mode: "received",
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ]);
-
-      console.log("Message ID:", currentMessageId.current);
-
-      currentMessageId.current++;
-    });
-
-    return () => {
-      readSubscription?.remove();
-    };
-  }, [connectedDevice]);*/
-
-  const readSubscription = connectedDevice?.onDataReceived((event) => {
-      const receivedData = Buffer.from(event.data, "base64")
-        .toString("utf-8")
-        .trim();
-
-      if (!receivedData) return;
-
-      setMessages([
-        ...messages,
-        {
-          id: currentMessageId.current,
-          text: receivedData,
-          mode: "received",
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ]);
-
-      console.log("Message ID:", currentMessageId.current);
-
-      currentMessageId.current++;
-    });
-
   useEffect(() => {
     if (messages.length > 0) {
       scrollToBottom(true, 100);
     }
   }, [messages, scrollToBottom]);
+
+  useEffect(() => {
+    if (connectedDevice) {
+      readSubscriptionRef.current = connectedDevice?.onDataReceived((event) => {
+        const receivedData = Buffer.from(event.data, "base64")
+          .toString("utf-8")
+          .trim();
+
+        if (!receivedData) return;
+
+        setMessages([
+          ...messages,
+          {
+            id: currentMessageId.current,
+            text: receivedData,
+            mode: "received",
+            time: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          },
+        ]);
+
+        console.log("Message ID:", currentMessageId.current);
+
+        currentMessageId.current++;
+      });
+    }
+
+    return () => {
+      if (readSubscriptionRef.current) {
+        readSubscriptionRef.current.remove();
+        readSubscriptionRef.current = null;
+      }
+    };
+  }, [connectedDevice, messages]);
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
@@ -213,37 +196,104 @@ export default function CommunicationScreen() {
     );
   };
 
+  const disconnectDevice = async () => {
+    if (connectedDevice) {
+      Alert.alert(
+        "Bağlantıyı Kes",
+        "Bağlantı kesilecek. Emin misiniz?",
+        [
+          {
+            text: "Vazgeç",
+            style: "cancel",
+          },
+          {
+            text: "Kes",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                setManuallyDisconnected(true);
+                if (readSubscriptionRef.current) {
+                  readSubscriptionRef.current.remove();
+                  readSubscriptionRef.current = null;
+                }
+                await connectedDevice.disconnect();
+                setConnectedDevice(null);
+                //navigation.goBack();
+                ToastAndroid.show("Bağlantı kesildi", ToastAndroid.SHORT);
+              } catch (e) {
+                console.error("Disconnect error:", e);
+                ToastAndroid.show("Bağlantı kesilemedi", ToastAndroid.SHORT);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Icon name="arrow-left" size={24} color="#000000" />
-        </TouchableOpacity>
-
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>
-            {connectedDevice?.name || "Bağlı Değil"}
-          </Text>
-          <Text 
-            style={
-              connectedDevice ? styles.headerStatusConnected : styles.headerStatusNotConnected
-            }
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
           >
-            {connectedDevice ? "Çevrimiçi" : "Çevrimdışı"}
-          </Text>
+            <Icon name="arrow-left" size={24} color="#000000" />
+          </TouchableOpacity>
+
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerTitle}>
+              {connectedDevice?.name || "Bağlı Değil"}
+            </Text>
+            <Text
+              style={
+                connectedDevice ? styles.headerStatusConnected : styles.headerStatusNotConnected
+              }
+            >
+              {connectedDevice ? "Çevrimiçi" : "Çevrimdışı"}
+            </Text>
+          </View>
         </View>
 
-        <TouchableOpacity
-          onPress={clearMessages}
-          style={styles.clearButton}
-        >
-          <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>
-            Mesajları Temizle
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.headerIcons}>
+          <TouchableOpacity
+            onPress={() => navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            })}
+            style={styles.headerIconButton}
+          >
+            <Icon name="home" size={25} color="#000000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('BluetoothConnection')}
+            style={styles.headerIconButtonCog}
+          >
+            <Icon name="cog" size={25} color="#000000" />
+          </TouchableOpacity>
+          {connectedDevice ? (
+            <TouchableOpacity
+              onPress={disconnectDevice}
+              style={styles.headerIconButtonBluetoothOff}
+            >
+              <Icon name="bluetooth-off" size={25} color="#FF0000" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('BluetoothConnection')}
+              style={styles.headerIconButtonBluetoothConnect}
+            >
+              <Icon name="bluetooth-connect" size={25} color="#10B981" />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={clearMessages}
+            style={styles.headerIconButtonTrash}
+          >
+            <Icon name="trash-can" size={25} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView
