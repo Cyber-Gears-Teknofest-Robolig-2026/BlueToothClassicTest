@@ -18,39 +18,11 @@ import { create } from "zustand";
 import HomeScreen from "./HomeScreen";
 import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
 import CommunicationScreen from "./CommunicationScreen";
-
-interface Message {
-  id: number;
-  text: string;
-  mode: "sent" | "received";
-  time: string;
-}
-
-type BluetoothStore = {
-  connectedDevice: BluetoothDevice | null;
-  setConnectedDevice: (device: BluetoothDevice | null) => void;
-  messages: Message[];
-  setMessages: (messages: Message[]) => void;
-  manuallyDisconnected: boolean;
-  setManuallyDisconnected: (manuallyDisconnected: boolean) => void;
-};
-
-export const useBluetoothStore = create<BluetoothStore>((set) => ({
-  connectedDevice: null,
-  setConnectedDevice: (device) => set({ connectedDevice: device }),
-  messages: [],
-  setMessages: (messages: Message[]) => set({ messages }),
-  manuallyDisconnected: false,
-  setManuallyDisconnected: (manuallyDisconnected: boolean) => set({ manuallyDisconnected }),
-}));
-
-export type RootStackParamList = {
-  Home: undefined;
-  BluetoothConnection: undefined;
-  Communication: undefined;
-};
-
-export type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import { 
+  RootStackParamList,
+  AppNavigationProp, 
+  useBluetoothStore, 
+} from "./constants";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

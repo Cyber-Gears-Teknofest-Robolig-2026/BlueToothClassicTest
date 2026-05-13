@@ -9,7 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import styles from "./styles";
 import { useNavigation } from "@react-navigation/native";
-import { AppNavigationProp } from "../App";
+import { AppNavigationProp } from "../constants";
 
 const BluetoothConnectionButton = () => {
   const navigation = useNavigation<AppNavigationProp>();

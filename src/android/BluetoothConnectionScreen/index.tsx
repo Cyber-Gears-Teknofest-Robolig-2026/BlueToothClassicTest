@@ -28,7 +28,7 @@ import { useNavigation } from "@react-navigation/native";
 import { 
   AppNavigationProp,
   useBluetoothStore 
-} from "../App";
+} from "../constants";
 
 export default function BluetoothConnectionScreen() {
 
