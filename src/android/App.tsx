@@ -30,15 +30,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
 
-  const colorScheme = useColorScheme();
-
-  console.log('colorScheme:', colorScheme);
 
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
   const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
   const manuallyDisconnected = useBluetoothStore((state) => state.manuallyDisconnected);
   const setManuallyDisconnected = useBluetoothStore((state) => state.setManuallyDisconnected);
-  const showBluetoothAlert = useRef(false);
 
   useEffect(() => {
     const bluetoothDisabledSubscription = RNBluetoothClassic.onBluetoothDisabled(async () => {
@@ -46,7 +42,6 @@ const AppNavigator = () => {
         "Hata",
         "Bluetooth kapalı!"
       );
-      showBluetoothAlert.current = true;
       await connectedDevice?.disconnect();
       setManuallyDisconnected(false);
       setConnectedDevice(null);
@@ -72,7 +67,7 @@ const AppNavigator = () => {
   }, []);
 
   return (
-      <NavigationContainer theme={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <NavigationContainer>
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{
