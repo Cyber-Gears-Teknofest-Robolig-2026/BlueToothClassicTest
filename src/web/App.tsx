@@ -11,7 +11,7 @@ import {
   NativeStackNavigationProp,
 } from '@react-navigation/native-stack';
 import HomeScreen from './HomeScreen';
-import BluetoothConnectionScreen from './SerialConnectionScreen';
+import BluetoothConnectionScreen from './BluetoothConnectionScreen';
 import CommunicationScreen from './CommunicationScreen';
 import { type RootStackParamList, useBluetoothStore } from './constants';
 

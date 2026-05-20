@@ -52,7 +52,12 @@ export default function BluetoothConnectionScreen() {
       setIsConnecting(true);
       await port.open({ baudRate: 9600 });
 
-      const info = port.getInfo ? port.getInfo() : {};
+      // Web Serial API'de COM port adı script'e expose edilmiyor.
+      // port objesinde ne varsa logla (vendor/product ID dışında bir şey çıkmayacak):
+      console.log('port:', port);
+      console.log('port.getInfo():', port.getInfo?.());
+      console.log('port keys:', Object.keys(port));
+
       const bluetoothDevice = {
         readable: port.readable,
         writable: port.writable,
@@ -61,10 +66,10 @@ export default function BluetoothConnectionScreen() {
         },
       };
 
+      console.log('bluetoothDevice:', bluetoothDevice);
+
       setConnectedDevice(bluetoothDevice);
-      setDeviceName(
-        info.usbVendorId ? `USB Device (${info.usbVendorId})` : 'Seri Cihaz'
-      );
+      setDeviceName('Seri Port');
       setMessages([]);
     } catch (e) {
       window.alert('Hata: Bağlantı kurulamadı.');

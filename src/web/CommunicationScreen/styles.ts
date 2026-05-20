@@ -167,7 +167,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 0,
     outlineWidth: 0,
-  },
+    outlineStyle: 'none',
+    outlineColor: 'transparent',
+  } as any,
   sendButton: {
     backgroundColor: '#00AA00',
     borderRadius: 20,
