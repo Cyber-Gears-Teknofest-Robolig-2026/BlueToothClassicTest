@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -8,6 +8,8 @@ import RNBluetoothClassic, {
 import {
   NavigationContainer,
   useNavigation,
+  DarkTheme, 
+  DefaultTheme,
 } from "@react-navigation/native";
 import {
   createNativeStackNavigator,
@@ -27,6 +29,10 @@ import {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
+
+  const colorScheme = useColorScheme();
+
+  console.log('colorScheme:', colorScheme);
 
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
   const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
@@ -66,12 +72,13 @@ const AppNavigator = () => {
   }, []);
 
   return (
-      <NavigationContainer>
+      <NavigationContainer theme={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{
             headerShown: false,
           }}
+          
         >
           <Stack.Screen name="Home">
             {() => (

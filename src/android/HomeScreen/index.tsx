@@ -10,6 +10,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import styles from "./styles";
 import { useNavigation } from "@react-navigation/native";
 import { AppNavigationProp } from "../constants";
+import { useTheme } from "@react-navigation/native";
 
 const BluetoothConnectionButton = () => {
   const navigation = useNavigation<AppNavigationProp>();
@@ -44,9 +45,11 @@ const CommunicationButton = () => {
 }
 
 export default function HomeScreen() {
+  
+  const { colors } = useTheme();
 
   return (
-    <SafeAreaView style={styles.container} edges={[
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[
         "top",
         "left",
         "right",
