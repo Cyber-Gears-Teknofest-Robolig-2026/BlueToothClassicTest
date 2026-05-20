@@ -11,33 +11,33 @@ import {
   NativeStackNavigationProp,
 } from '@react-navigation/native-stack';
 import HomeScreen from './HomeScreen';
-import SerialConnectionScreen from './SerialConnectionScreen';
+import BluetoothConnectionScreen from './SerialConnectionScreen';
 import CommunicationScreen from './CommunicationScreen';
-import { type RootStackParamList, useSerialStore } from './constants';
+import { type RootStackParamList, useBluetoothStore } from './constants';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
-  const connectedPort = useSerialStore((state) => state.connectedPort);
-  const setConnectedPort = useSerialStore((state) => state.setConnectedPort);
-  const manuallyDisconnected = useSerialStore(
+  const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
+  const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
+  const manuallyDisconnected = useBluetoothStore(
     (state) => state.manuallyDisconnected
   );
-  const setManuallyDisconnected = useSerialStore(
+  const setManuallyDisconnected = useBluetoothStore(
     (state) => state.setManuallyDisconnected
   );
 
   useEffect(() => {
-    // Bağlantı kopma kontrolü (Web Serial API için basit implementasyon)
+    // Bağlantı kopma kontrolü (Web Bluetooth API için basit implementasyon)
     const checkConnection = setInterval(() => {
-      if (connectedPort && !manuallyDisconnected) {
-        // Web Serial API'de bağlantı durumu kontrolü
+      if (connectedDevice && !manuallyDisconnected) {
+        // Web Bluetooth API'de bağlantı durumu kontrolü
         // Gerçek implementasyon daha karmaşık olabilir
       }
     }, 5000);
 
     return () => clearInterval(checkConnection);
-  }, [connectedPort, manuallyDisconnected]);
+  }, [connectedDevice, manuallyDisconnected]);
 
   return (
     <NavigationContainer
@@ -45,7 +45,7 @@ const AppNavigator = () => {
         prefixes: [],
         config: {
           screens: {
-            SerialConnection: '/SerialConnection',
+            BluetoothConnection: '/BluetoothConnection',
             Communication: '/Communication',
           },
         },
@@ -61,8 +61,8 @@ const AppNavigator = () => {
           {() => <HomeScreen />}
         </Stack.Screen>
 
-        <Stack.Screen name="SerialConnection">
-          {() => <SerialConnectionScreen />}
+        <Stack.Screen name="BluetoothConnection">
+          {() => <BluetoothConnectionScreen />}
         </Stack.Screen>
 
         <Stack.Screen name="Communication">

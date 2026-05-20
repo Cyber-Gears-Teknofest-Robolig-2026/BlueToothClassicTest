@@ -15,7 +15,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import styles from './styles';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../constants';
-import { useSerialStore } from '../constants';
+import { useBluetoothStore } from '../constants';
 
 interface Message {
   id: number;
@@ -26,17 +26,18 @@ interface Message {
 
 export default function CommunicationScreen() {
   const navigation = useNavigation<AppNavigationProp>();
-  const connectedPort = useSerialStore((state) => state.connectedPort);
-  const messages = useSerialStore((state) => state.messages);
-  const setMessages = useSerialStore((state) => state.setMessages);
-  const manuallyDisconnected = useSerialStore(
+  const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
+  const messages = useBluetoothStore((state) => state.messages);
+  const setMessages = useBluetoothStore((state) => state.setMessages);
+  const manuallyDisconnected = useBluetoothStore(
     (state) => state.manuallyDisconnected
   );
-  const setManuallyDisconnected = useSerialStore(
+  const setManuallyDisconnected = useBluetoothStore(
     (state) => state.setManuallyDisconnected
   );
-  const setConnectedPort = useSerialStore((state) => state.setConnectedPort);
-  const portName = useSerialStore((state) => state.portName);
+  const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
+  const deviceName = useBluetoothStore((state) => state.deviceName);
+  const setDeviceName = useBluetoothStore((state) => state.setDeviceName);
 
   const [inputText, setInputText] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -89,13 +90,13 @@ export default function CommunicationScreen() {
     }
   }, [messages, scrollToBottom]);
 
-  // Serial port okuma
+  // Bluetooth okuma
   useEffect(() => {
-    const readFromSerial = async () => {
-      if (!connectedPort || !connectedPort.readable) return;
+    const readFromBluetooth = async () => {
+      if (!connectedDevice || !connectedDevice.readable) return;
 
       try {
-        const reader = connectedPort.readable.getReader();
+        const reader = connectedDevice.readable.getReader();
         readerRef.current = reader;
         readLoopRef.current = true;
 
@@ -129,8 +130,8 @@ export default function CommunicationScreen() {
       }
     };
 
-    if (connectedPort && connectedPort.readable) {
-      readFromSerial();
+    if (connectedDevice && connectedDevice.readable) {
+      readFromBluetooth();
     }
 
     return () => {
@@ -140,11 +141,11 @@ export default function CommunicationScreen() {
         readerRef.current = null;
       }
     };
-  }, [connectedPort]);
+  }, [connectedDevice]);
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
-    if (!connectedPort || !connectedPort.writable) {
+    if (!connectedDevice || !connectedDevice.writable) {
       Alert.alert('Hata', 'Port bağlı değil veya yazılabilir değil.');
       return;
     }
@@ -152,7 +153,7 @@ export default function CommunicationScreen() {
     const sendedData = inputText.trim();
 
     try {
-      const writer = connectedPort.writable.getWriter();
+      const writer = connectedDevice.writable.getWriter();
       await writer.write(new TextEncoder().encode(sendedData + '\r\n'));
       writer.releaseLock();
 
@@ -199,8 +200,8 @@ export default function CommunicationScreen() {
     ]);
   };
 
-  const disconnectPort = async () => {
-    if (connectedPort) {
+  const disconnectDevice = async () => {
+    if (connectedDevice) {
       Alert.alert('Bağlantıyı Kes', 'Bağlantı kesilecek. Emin misiniz?', [
         {
           text: 'Vazgeç',
@@ -217,11 +218,18 @@ export default function CommunicationScreen() {
                 await readerRef.current.cancel();
                 readerRef.current = null;
               }
-              await connectedPort.close();
-              setConnectedPort(null);
+              await connectedDevice.close();
+              setConnectedDevice(null);
+              setDeviceName(null);
+              setMessages([]);
               navigation.goBack();
             } catch (e) {
               console.error('Bağlantı kesme hatası:', e);
+              // Force disconnect even if there's an error
+              setConnectedDevice(null);
+              setDeviceName(null);
+              setMessages([]);
+              navigation.goBack();
             }
           },
         },
@@ -271,13 +279,13 @@ export default function CommunicationScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>{portName || 'Bağlı Değil'}</Text>
+          <Text style={styles.headerTitle}>{deviceName || 'Bağlı Değil'}</Text>
           <Text
             style={
-              connectedPort ? styles.headerStatusConnected : styles.headerStatusNotConnected
+              connectedDevice ? styles.headerStatusConnected : styles.headerStatusNotConnected
             }
           >
-            {connectedPort ? 'Çevrimiçi' : 'Çevrimdışı'}
+            {connectedDevice ? 'Çevrimiçi' : 'Çevrimdışı'}
           </Text>
         </View>
 
@@ -294,13 +302,13 @@ export default function CommunicationScreen() {
             <Icon name="home" size={25} color="#000000" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => navigation.navigate('SerialConnection')}
+            onPress={() => navigation.navigate('BluetoothConnection')}
             style={styles.headerIconButtonCog}
           >
             <Icon name="cog" size={25} color="#000000" />
           </TouchableOpacity>
-          {connectedPort && (
-            <TouchableOpacity onPress={disconnectPort} style={styles.headerIconButton}>
+          {connectedDevice && (
+            <TouchableOpacity onPress={disconnectDevice} style={styles.headerIconButton}>
               <Icon name="bluetooth-off" size={25} color="#EF4444" />
             </TouchableOpacity>
           )}
@@ -334,12 +342,12 @@ export default function CommunicationScreen() {
         <TouchableOpacity
           style={styles.sendButton}
           onPress={sendMessage}
-          disabled={!inputText.trim() || !connectedPort}
+          disabled={!inputText.trim() || !connectedDevice}
         >
           <Icon
             name="send"
             size={24}
-            color={inputText.trim() && connectedPort ? '#FFFFFF' : '#94A3B8'}
+            color={inputText.trim() && connectedDevice ? '#FFFFFF' : '#94A3B8'}
           />
         </TouchableOpacity>
       </View>

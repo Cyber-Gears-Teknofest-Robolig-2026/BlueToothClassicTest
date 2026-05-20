@@ -16,24 +16,24 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import styles from './styles';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../constants';
-import { useSerialStore } from '../constants';
+import { useBluetoothStore } from '../constants';
 
-interface SerialPortInfo {
+interface BluetoothDeviceInfo {
   usbVendorId?: number;
   usbProductId?: number;
 }
 
-export default function SerialConnectionScreen() {
-  const connectedPort = useSerialStore((state) => state.connectedPort);
-  const setConnectedPort = useSerialStore((state) => state.setConnectedPort);
-  const portName = useSerialStore((state) => state.portName);
-  const setPortName = useSerialStore((state) => state.setPortName);
-  const messages = useSerialStore((state) => state.messages);
-  const setMessages = useSerialStore((state) => state.setMessages);
-  const manuallyDisconnected = useSerialStore(
+export default function BluetoothConnectionScreen() {
+  const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
+  const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
+  const deviceName = useBluetoothStore((state) => state.deviceName);
+  const setDeviceName = useBluetoothStore((state) => state.setDeviceName);
+  const messages = useBluetoothStore((state) => state.messages);
+  const setMessages = useBluetoothStore((state) => state.setMessages);
+  const manuallyDisconnected = useBluetoothStore(
     (state) => state.manuallyDisconnected
   );
-  const setManuallyDisconnected = useSerialStore(
+  const setManuallyDisconnected = useBluetoothStore(
     (state) => state.setManuallyDisconnected
   );
 
@@ -42,35 +42,35 @@ export default function SerialConnectionScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [availablePorts, setAvailablePorts] = useState<SerialPortInfo[]>([]);
+  const [availableDevices, setAvailableDevices] = useState<BluetoothDeviceInfo[]>([]);
 
   useEffect(() => {
-    // Web Serial API kontrolü
+    // Web Bluetooth API kontrolü
     if (typeof window !== 'undefined' && 'serial' in navigator) {
-      // Tarayıcı Web Serial API'yi destekliyor
+      // Tarayıcı Web Bluetooth API'yi destekliyor
     } else {
       Alert.alert(
         'Hata',
-        'Tarayıcınız Web Serial API desteklemiyor. Chrome veya Edge kullanın.'
+        'Tarayıcınız Web Bluetooth API desteklemiyor. Chrome veya Edge kullanın.'
       );
     }
   }, []);
 
-  const openSerialModal = async () => {
+  const openBluetoothModal = async () => {
     try {
       // Kullanıcıdan port seçmesini iste
       if ('serial' in navigator) {
         const port = await (navigator as any).serial.requestPort();
-        setAvailablePorts([{ usbVendorId: port.usbVendorId, usbProductId: port.usbProductId }]);
+        setAvailableDevices([{ usbVendorId: port.usbVendorId, usbProductId: port.usbProductId }]);
         setModalVisible(true);
       }
     } catch (error) {
-      console.error('Port seçme hatası:', error);
-      Alert.alert('Hata', 'Port seçilemedi.');
+      console.error('Cihaz seçme hatası:', error);
+      Alert.alert('Hata', 'Cihaz seçilemedi.');
     }
   };
 
-  const connectToPort = async (portInfo: SerialPortInfo) => {
+  const connectToDevice = async (deviceInfo: BluetoothDeviceInfo) => {
     try {
       setModalVisible(false);
       setIsConnecting(true);
@@ -79,14 +79,14 @@ export default function SerialConnectionScreen() {
         const ports = await (navigator as any).serial.getPorts();
         const port = ports.find(
           (p: any) =>
-            p.usbVendorId === portInfo.usbVendorId &&
-            p.usbProductId === portInfo.usbProductId
+            p.usbVendorId === deviceInfo.usbVendorId &&
+            p.usbProductId === deviceInfo.usbProductId
         );
 
         if (port) {
           await port.open({ baudRate: 9600 });
 
-          const serialPort = {
+          const bluetoothDevice = {
             readable: port.readable,
             writable: port.writable,
             close: async () => {
@@ -94,8 +94,8 @@ export default function SerialConnectionScreen() {
             },
           };
 
-          setConnectedPort(serialPort);
-          setPortName(`COM Port (${portInfo.usbVendorId})`);
+          setConnectedDevice(bluetoothDevice);
+          setDeviceName(`Bluetooth Cihazı (${deviceInfo.usbVendorId})`);
           setMessages([]);
         }
       }
@@ -104,34 +104,25 @@ export default function SerialConnectionScreen() {
     } catch (e) {
       console.error('Bağlantı hatası:', e);
       setIsConnecting(false);
-      Alert.alert('Hata', 'Bağlantı kurulamadı.');
+      Alert.alert('Hata', 'Bluetooth bağlantısı kurulamadı.');
     }
   };
 
-  const disconnectPort = async () => {
-    if (connectedPort) {
-      Alert.alert('Bağlantıyı Kes', 'Bağlantı kesilecek. Emin misiniz?', [
-        {
-          text: 'Vazgeç',
-          style: 'cancel',
-        },
-        {
-          text: 'Kes',
-          style: 'destructive',
-          onPress: async () => {
-            setManuallyDisconnected(true);
-            await connectedPort.close();
-            setConnectedPort(null);
-            setPortName(null);
-            setMessages([]);
-          },
-        },
-      ]);
+  const disconnectDevice = async () => {
+    if (connectedDevice) {
+      const confirmed = window.confirm("Cihaz bağlantısı kesilsin mi?");
+      if (confirmed) {
+        setManuallyDisconnected(true);
+        await connectedDevice.close();
+        setConnectedDevice(null);
+        setDeviceName(null);
+        setMessages([]);
+      }
     }
   };
 
-  const renderPortItem = ({ item }: { item: SerialPortInfo }) => {
-    const isConnected = !!connectedPort;
+  const renderDeviceItem = ({ item }: { item: BluetoothDeviceInfo }) => {
+    const isConnected = !!connectedDevice;
 
     return (
       <Pressable
@@ -139,14 +130,14 @@ export default function SerialConnectionScreen() {
           styles.deviceListItem,
           pressed && styles.deviceListItemPressed,
         ]}
-        onPress={() => (isConnected ? disconnectPort() : connectToPort(item))}
+        onPress={() => (isConnected ? disconnectDevice() : connectToDevice(item))}
       >
         <View style={styles.listIconCircle}>
-          <Icon name="serial-port" size={22} color={isConnected ? '#0284C7' : '#64748B'} />
+          <Icon name="bluetooth" size={22} color={isConnected ? '#0284C7' : '#64748B'} />
         </View>
         <View style={styles.listTextSection}>
           <Text style={styles.deviceName}>
-            {item.usbVendorId ? `USB Device (${item.usbVendorId})` : 'Seri Port'}
+            {item.usbVendorId ? `USB Device (${item.usbVendorId})` : 'Bluetooth Cihazı'}
           </Text>
           {item.usbProductId && (
             <Text style={styles.deviceAddress}>Product ID: {item.usbProductId}</Text>
@@ -172,13 +163,13 @@ export default function SerialConnectionScreen() {
         >
           <Icon name="arrow-left" size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Seri Port Bağlantısı</Text>
+        <Text style={styles.headerTitle}>Bluetooth Bağlantısı</Text>
       </View>
 
       <View style={styles.content}>
-        <TouchableOpacity style={styles.scanButton} onPress={openSerialModal}>
+        <TouchableOpacity style={styles.scanButton} onPress={openBluetoothModal}>
           <Icon name="magnify" size={24} color="#FFFFFF" />
-          <Text style={styles.scanButtonText}>Port Seç</Text>
+          <Text style={styles.scanButtonText}>Cihaz Seç</Text>
         </TouchableOpacity>
 
         {isConnecting && (
@@ -188,15 +179,15 @@ export default function SerialConnectionScreen() {
           </View>
         )}
 
-        {connectedPort && (
+        {connectedDevice && (
           <View style={styles.connectedInfo}>
             <View style={styles.connectedInfoRow}>
               <Icon name="check-circle" size={20} color="#10B981" />
               <Text style={styles.connectedInfoText}>
-                Bağlı: {portName || 'Seri Port'}
+                Bağlı: {deviceName || 'Bluetooth Cihazı'}
               </Text>
             </View>
-            <TouchableOpacity style={styles.disconnectButton} onPress={disconnectPort}>
+            <TouchableOpacity style={styles.disconnectButton} onPress={disconnectDevice}>
               <Text style={styles.disconnectButtonText}>Bağlantıyı Kes</Text>
             </TouchableOpacity>
           </View>
@@ -212,15 +203,15 @@ export default function SerialConnectionScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Kullanılabilir Portlar</Text>
+              <Text style={styles.modalTitle}>Kullanılabilir Cihazlar</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Icon name="close" size={24} color="#000000" />
               </TouchableOpacity>
             </View>
 
             <FlatList
-              data={availablePorts}
-              renderItem={renderPortItem}
+              data={availableDevices}
+              renderItem={renderDeviceItem}
               keyExtractor={(item, index) => index.toString()}
               style={styles.deviceList}
             />

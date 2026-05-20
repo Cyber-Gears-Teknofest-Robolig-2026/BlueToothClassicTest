@@ -12,20 +12,20 @@ import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../constants';
 import { useTheme } from '@react-navigation/native';
 
-const SerialConnectionButton = () => {
+const BluetoothConnectionButton = () => {
   const navigation = useNavigation<AppNavigationProp>();
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       style={styles.menuCard}
-      onPress={() => navigation.navigate('SerialConnection')}
+      onPress={() => navigation.navigate('BluetoothConnection')}
     >
       <View style={[styles.menuIconCircle, { backgroundColor: '#E0F2FE' }]}>
-        <Icon name="serial-port" size={30} color="#0284C7" />
+        <Icon name="bluetooth" size={30} color="#0284C7" />
       </View>
       <View style={styles.menuTextContent}>
-        <Text style={styles.menuTitle}>Seri Port Bağlantısı</Text>
-        <Text style={styles.menuDesc}>COM port bağlantısı yap</Text>
+        <Text style={styles.menuTitle}>Bluetooth Bağlantısı</Text>
+        <Text style={styles.menuDesc}>Bluetooth cihaz bağlantısı yap</Text>
       </View>
       <Icon name="chevron-right" size={24} color="#CBD5E1" />
     </TouchableOpacity>
@@ -63,12 +63,12 @@ export default function HomeScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
       <View style={[styles.mainHeader, { paddingHorizontal: 25 }]}>
-        <Text style={styles.mainHeaderText}>Seri Port Test</Text>
+        <Text style={styles.mainHeaderText}>Bluetooth Test</Text>
         <Text style={styles.subHeaderText}>Lütfen bir işlem seçin</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <SerialConnectionButton />
+        <BluetoothConnectionButton />
         <CommunicationButton />
       </ScrollView>
     </SafeAreaView>
