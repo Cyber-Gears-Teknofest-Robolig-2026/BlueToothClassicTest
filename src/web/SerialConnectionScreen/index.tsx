@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   FlatList,
   ScrollView,
@@ -49,10 +48,7 @@ export default function BluetoothConnectionScreen() {
     if (typeof window !== 'undefined' && 'serial' in navigator) {
       // Tarayıcı Web Bluetooth API'yi destekliyor
     } else {
-      Alert.alert(
-        'Hata',
-        'Tarayıcınız Web Bluetooth API desteklemiyor. Chrome veya Edge kullanın.'
-      );
+      window.alert('Hata: Tarayıcınız Web Bluetooth API desteklemiyor. Chrome veya Edge kullanın.');
     }
   }, []);
 
@@ -66,7 +62,7 @@ export default function BluetoothConnectionScreen() {
       }
     } catch (error) {
       console.error('Cihaz seçme hatası:', error);
-      Alert.alert('Hata', 'Cihaz seçilemedi.');
+      window.alert('Hata: Cihaz seçilemedi.');
     }
   };
 
@@ -104,7 +100,7 @@ export default function BluetoothConnectionScreen() {
     } catch (e) {
       console.error('Bağlantı hatası:', e);
       setIsConnecting(false);
-      Alert.alert('Hata', 'Bluetooth bağlantısı kurulamadı.');
+      window.alert('Hata: Bluetooth bağlantısı kurulamadı.');
     }
   };
 

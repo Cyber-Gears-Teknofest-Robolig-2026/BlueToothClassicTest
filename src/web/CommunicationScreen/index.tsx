@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   TextInput,
-  Alert,
   TouchableOpacity,
   Text,
   FlatList,
@@ -146,7 +145,7 @@ export default function CommunicationScreen() {
   const sendMessage = async () => {
     if (!inputText.trim()) return;
     if (!connectedDevice || !connectedDevice.writable) {
-      Alert.alert('Hata', 'Port bağlı değil veya yazılabilir değil.');
+      window.alert('Hata: Cihaz bağlı değil veya yazılabilir değil.');
       return;
     }
 
@@ -173,67 +172,51 @@ export default function CommunicationScreen() {
       currentMessageId.current++;
       setInputText('');
       scrollToBottom(true, 150);
-    } catch (e) {
-      Alert.alert('Hata', 'Veri gönderilemedi.');
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    } 
+    catch (e) {
+      window.alert('Hata: Veri gönderilemedi.');
     }
   };
 
   const clearMessages = () => {
     if (messages.length === 0) {
-      Alert.alert('Bilgi', 'Silinecek mesaj yok');
+      window.alert('Bilgi: Silinecek mesaj yok');
       return;
     }
 
-    Alert.alert('Mesajları Temizle', 'Ekrandaki bütün mesajlar silinecek. Emin misiniz?', [
-      {
-        text: 'Vazgeç',
-        style: 'cancel',
-      },
-      {
-        text: 'Sil',
-        style: 'destructive',
-        onPress: () => {
-          setMessages([]);
-          currentMessageId.current = 0;
-        },
-      },
-    ]);
+    if (window.confirm('Ekrandaki bütün mesajlar silinecek. Emin misiniz?')) {
+      setMessages([]);
+      currentMessageId.current = 0;
+    }
   };
 
   const disconnectDevice = async () => {
     if (connectedDevice) {
-      Alert.alert('Bağlantıyı Kes', 'Bağlantı kesilecek. Emin misiniz?', [
-        {
-          text: 'Vazgeç',
-          style: 'cancel',
-        },
-        {
-          text: 'Kes',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setManuallyDisconnected(true);
-              readLoopRef.current = false;
-              if (readerRef.current) {
-                await readerRef.current.cancel();
-                readerRef.current = null;
-              }
-              await connectedDevice.close();
-              setConnectedDevice(null);
-              setDeviceName(null);
-              setMessages([]);
-              navigation.goBack();
-            } catch (e) {
-              console.error('Bağlantı kesme hatası:', e);
-              // Force disconnect even if there's an error
-              setConnectedDevice(null);
-              setDeviceName(null);
-              setMessages([]);
-              navigation.goBack();
-            }
-          },
-        },
-      ]);
+      if (window.confirm('Bağlantı kesilecek. Emin misiniz?')) {
+        try {
+          setManuallyDisconnected(true);
+          readLoopRef.current = false;
+          if (readerRef.current) {
+            await readerRef.current.cancel();
+            readerRef.current = null;
+          }
+          await connectedDevice.close();
+          setConnectedDevice(null);
+          setDeviceName(null);
+          setMessages([]);
+          navigation.goBack();
+        } catch (e) {
+          console.error('Bağlantı kesme hatası:', e);
+          // Force disconnect even if there's an error
+          setConnectedDevice(null);
+          setDeviceName(null);
+          setMessages([]);
+          navigation.goBack();
+        }
+      }
     }
   };
 
@@ -245,6 +228,7 @@ export default function CommunicationScreen() {
           styles.messageBubble,
           isSent ? styles.sentBubble : styles.receivedBubble,
         ]}
+        key={item.id}
       >
         <Text
           style={[
@@ -336,8 +320,14 @@ export default function CommunicationScreen() {
           value={inputText}
           onChangeText={setInputText}
           multiline={false}
-          onSubmitEditing={sendMessage}
-          blurOnSubmit={true}
+          blurOnSubmit={false}
+          onKeyPress={(e: any) => {
+            const key = e?.nativeEvent?.key ?? e?.key;
+            if (key === 'Enter') {
+              if (typeof e.preventDefault === 'function') e.preventDefault();
+              sendMessage();
+            }
+          }}
         />
         <TouchableOpacity
           style={styles.sendButton}
