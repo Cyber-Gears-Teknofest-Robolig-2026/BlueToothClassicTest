@@ -70,7 +70,6 @@ export default function BluetoothConnectionScreen() {
         setLastConnectedDevice(lastDevice);
       }
     } catch (error) {
-      console.error('Error loading last connected device:', error);
     }
   };
 
@@ -79,7 +78,6 @@ export default function BluetoothConnectionScreen() {
       await AsyncStorage.setItem('lastConnectedDevice', JSON.stringify(device));
       setLastConnectedDevice(device);
     } catch (error) {
-      console.error('Error saving last connected device:', error);
     }
   };
 
@@ -192,7 +190,6 @@ export default function BluetoothConnectionScreen() {
       setIsConnecting(false);
     }
     catch (e) {
-      console.error("Connection error:", e);
       setIsConnecting(false);
       Alert.alert("Hata", "Bağlantı kurulamadı.");
     }

@@ -221,7 +221,6 @@ export default function CommunicationScreen() {
                 //navigation.goBack();
                 ToastAndroid.show("Bağlantı kesildi", ToastAndroid.SHORT);
               } catch (e) {
-                console.error("Disconnect error:", e);
                 ToastAndroid.show("Bağlantı kesilemedi", ToastAndroid.SHORT);
               }
             },

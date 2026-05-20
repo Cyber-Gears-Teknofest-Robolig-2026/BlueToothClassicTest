@@ -123,7 +123,6 @@ export default function CommunicationScreen() {
           }
         }
       } catch (error) {
-        console.error('Okuma hatası:', error);
       } finally {
         readerRef.current = null;
       }
@@ -209,7 +208,6 @@ export default function CommunicationScreen() {
           setMessages([]);
           navigation.goBack();
         } catch (e) {
-          console.error('Bağlantı kesme hatası:', e);
           // Force disconnect even if there's an error
           setConnectedDevice(null);
           setDeviceName(null);
@@ -225,52 +223,66 @@ export default function CommunicationScreen() {
     return (
       <View
         style={[
-          styles.messageBubble,
-          isSent ? styles.sentBubble : styles.receivedBubble,
+          styles.messageWrapper,
+          isSent ? styles.messageWrapperSent : styles.messageWrapperReceived,
         ]}
         key={item.id}
       >
-        <Text
+        <View
           style={[
-            styles.messageText,
-            isSent ? styles.sentText : styles.receivedText,
+            styles.messageBubble,
+            isSent ? styles.sentBubble : styles.receivedBubble,
           ]}
         >
-          {item.text}
-        </Text>
-        <Text
-          style={[
-            styles.messageTime,
-            isSent ? styles.sentTime : styles.receivedTime,
-          ]}
-        >
-          {item.time}
-        </Text>
+          <Text
+            style={[
+              styles.messageText,
+              isSent ? styles.sentText : styles.receivedText,
+            ]}
+            selectable
+          >
+            {item.text}
+          </Text>
+          <View style={styles.messageTimeContainer}>
+            <Text
+              style={[
+                styles.messageTime,
+                isSent ? styles.sentTime : styles.receivedTime,
+              ]}
+            >
+              {item.time}
+            </Text>
+          </View>
+        </View>
       </View>
     );
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Icon name="arrow-left" size={24} color="#000000" />
-        </TouchableOpacity>
-
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>{deviceName || 'Bağlı Değil'}</Text>
-          <Text
-            style={
-              connectedDevice ? styles.headerStatusConnected : styles.headerStatusNotConnected
-            }
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
           >
-            {connectedDevice ? 'Çevrimiçi' : 'Çevrimdışı'}
-          </Text>
+            <Icon name="arrow-left" size={24} color="#000000" />
+          </TouchableOpacity>
+
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerTitle}>{deviceName || 'Bağlı Değil'}</Text>
+            <Text
+              style={
+                connectedDevice
+                  ? styles.headerStatusConnected
+                  : styles.headerStatusNotConnected
+              }
+            >
+              {connectedDevice ? 'Çevrimiçi' : 'Çevrimdışı'}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.headerIcons}>
@@ -291,13 +303,26 @@ export default function CommunicationScreen() {
           >
             <Icon name="cog" size={25} color="#000000" />
           </TouchableOpacity>
-          {connectedDevice && (
-            <TouchableOpacity onPress={disconnectDevice} style={styles.headerIconButton}>
-              <Icon name="bluetooth-off" size={25} color="#EF4444" />
+          {connectedDevice ? (
+            <TouchableOpacity
+              onPress={disconnectDevice}
+              style={styles.headerIconButtonBluetoothOff}
+            >
+              <Icon name="bluetooth-off" size={25} color="#FF0000" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('BluetoothConnection')}
+              style={styles.headerIconButtonBluetoothConnect}
+            >
+              <Icon name="bluetooth-connect" size={25} color="#10B981" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={clearMessages} style={styles.headerIconButton}>
-            <Icon name="trash-can" size={25} color="#000000" />
+          <TouchableOpacity
+            onPress={clearMessages}
+            style={styles.headerIconButtonTrash}
+          >
+            <Icon name="trash-can" size={25} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -312,34 +337,35 @@ export default function CommunicationScreen() {
       />
 
       <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 8 }]}>
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          placeholder="Mesaj yaz..."
-          placeholderTextColor="#94A3B8"
-          value={inputText}
-          onChangeText={setInputText}
-          multiline={false}
-          blurOnSubmit={false}
-          onKeyPress={(e: any) => {
-            const key = e?.nativeEvent?.key ?? e?.key;
-            if (key === 'Enter') {
-              if (typeof e.preventDefault === 'function') e.preventDefault();
-              sendMessage();
-            }
-          }}
-        />
-        <TouchableOpacity
-          style={styles.sendButton}
-          onPress={sendMessage}
-          disabled={!inputText.trim() || !connectedDevice}
-        >
-          <Icon
-            name="send"
-            size={24}
-            color={inputText.trim() && connectedDevice ? '#FFFFFF' : '#94A3B8'}
+        <View style={styles.inputWrapper}>
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            placeholder="Mesaj yazın..."
+            placeholderTextColor="#54656F"
+            value={inputText}
+            onChangeText={setInputText}
+            multiline={false}
+            onKeyPress={(e: any) => {
+              const key = e?.nativeEvent?.key ?? e?.key;
+              if (key === 'Enter') {
+                if (typeof e.preventDefault === 'function') e.preventDefault();
+                sendMessage();
+              }
+            }}
           />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={
+              !inputText.trim() || !connectedDevice
+                ? styles.sendButtonDisabled
+                : styles.sendButton
+            }
+            onPress={sendMessage}
+            disabled={!inputText.trim() || !connectedDevice}
+          >
+            <Icon name="send" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );

@@ -4,10 +4,6 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  FlatList,
-  ScrollView,
-  Modal,
-  Pressable,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,11 +12,6 @@ import styles from './styles';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../constants';
 import { useBluetoothStore } from '../constants';
-
-interface BluetoothDeviceInfo {
-  usbVendorId?: number;
-  usbProductId?: number;
-}
 
 export default function BluetoothConnectionScreen() {
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
@@ -39,68 +30,46 @@ export default function BluetoothConnectionScreen() {
   const navigation = useNavigation<AppNavigationProp>();
   const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 
-  const [modalVisible, setModalVisible] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [availableDevices, setAvailableDevices] = useState<BluetoothDeviceInfo[]>([]);
 
   useEffect(() => {
-    // Web Bluetooth API kontrolü
-    if (typeof window !== 'undefined' && 'serial' in navigator) {
-      // Tarayıcı Web Bluetooth API'yi destekliyor
-    } else {
-      window.alert('Hata: Tarayıcınız Web Bluetooth API desteklemiyor. Chrome veya Edge kullanın.');
+    if (typeof window !== 'undefined' && !('serial' in navigator)) {
+      window.alert('Hata: Tarayıcınız Web Serial API desteklemiyor. Chrome veya Edge kullanın.');
     }
   }, []);
 
-  const openBluetoothModal = async () => {
+  const selectAndConnect = async () => {
+    if (!('serial' in navigator)) return;
+
+    let port: any;
     try {
-      // Kullanıcıdan port seçmesini iste
-      if ('serial' in navigator) {
-        const port = await (navigator as any).serial.requestPort();
-        setAvailableDevices([{ usbVendorId: port.usbVendorId, usbProductId: port.usbProductId }]);
-        setModalVisible(true);
-      }
+      port = await (navigator as any).serial.requestPort();
     } catch (error) {
-      console.error('Cihaz seçme hatası:', error);
-      window.alert('Hata: Cihaz seçilemedi.');
+      return;
     }
-  };
 
-  const connectToDevice = async (deviceInfo: BluetoothDeviceInfo) => {
     try {
-      setModalVisible(false);
       setIsConnecting(true);
+      await port.open({ baudRate: 9600 });
 
-      if ('serial' in navigator) {
-        const ports = await (navigator as any).serial.getPorts();
-        const port = ports.find(
-          (p: any) =>
-            p.usbVendorId === deviceInfo.usbVendorId &&
-            p.usbProductId === deviceInfo.usbProductId
-        );
+      const info = port.getInfo ? port.getInfo() : {};
+      const bluetoothDevice = {
+        readable: port.readable,
+        writable: port.writable,
+        close: async () => {
+          await port.close();
+        },
+      };
 
-        if (port) {
-          await port.open({ baudRate: 9600 });
-
-          const bluetoothDevice = {
-            readable: port.readable,
-            writable: port.writable,
-            close: async () => {
-              await port.close();
-            },
-          };
-
-          setConnectedDevice(bluetoothDevice);
-          setDeviceName(`Bluetooth Cihazı (${deviceInfo.usbVendorId})`);
-          setMessages([]);
-        }
-      }
-
-      setIsConnecting(false);
+      setConnectedDevice(bluetoothDevice);
+      setDeviceName(
+        info.usbVendorId ? `USB Device (${info.usbVendorId})` : 'Seri Cihaz'
+      );
+      setMessages([]);
     } catch (e) {
-      console.error('Bağlantı hatası:', e);
+      window.alert('Hata: Bağlantı kurulamadı.');
+    } finally {
       setIsConnecting(false);
-      window.alert('Hata: Bluetooth bağlantısı kurulamadı.');
     }
   };
 
@@ -117,103 +86,93 @@ export default function BluetoothConnectionScreen() {
     }
   };
 
-  const renderDeviceItem = ({ item }: { item: BluetoothDeviceInfo }) => {
-    const isConnected = !!connectedDevice;
-
-    return (
-      <Pressable
-        style={({ pressed }) => [
-          styles.deviceListItem,
-          pressed && styles.deviceListItemPressed,
-        ]}
-        onPress={() => (isConnected ? disconnectDevice() : connectToDevice(item))}
-      >
-        <View style={styles.listIconCircle}>
-          <Icon name="bluetooth" size={22} color={isConnected ? '#0284C7' : '#64748B'} />
-        </View>
-        <View style={styles.listTextSection}>
-          <Text style={styles.deviceName}>
-            {item.usbVendorId ? `USB Device (${item.usbVendorId})` : 'Bluetooth Cihazı'}
-          </Text>
-          {item.usbProductId && (
-            <Text style={styles.deviceAddress}>Product ID: {item.usbProductId}</Text>
-          )}
-        </View>
-        <Icon
-          name={isConnected ? 'check-circle' : 'chevron-right'}
-          size={24}
-          color={isConnected ? '#10B981' : '#CBD5E1'}
-        />
-      </Pressable>
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
-      <View style={styles.header}>
+      <View style={styles.headerWithBack}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Icon name="arrow-left" size={26} color="#1E293B" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Bluetooth Yönetimi</Text>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
+          onPress={() =>
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            })
+          }
+          style={styles.homeBtn}
         >
-          <Icon name="arrow-left" size={24} color="#000000" />
+          <Icon name="home" size={24} color="#1E293B" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bluetooth Bağlantısı</Text>
       </View>
 
-      <View style={styles.content}>
-        <TouchableOpacity style={styles.scanButton} onPress={openBluetoothModal}>
-          <Icon name="magnify" size={24} color="#FFFFFF" />
-          <Text style={styles.scanButtonText}>Cihaz Seç</Text>
-        </TouchableOpacity>
-
-        {isConnecting && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0284C7" />
-            <Text style={styles.loadingText}>Bağlanıyor...</Text>
-          </View>
-        )}
-
-        {connectedDevice && (
-          <View style={styles.connectedInfo}>
-            <View style={styles.connectedInfoRow}>
-              <Icon name="check-circle" size={20} color="#10B981" />
-              <Text style={styles.connectedInfoText}>
-                Bağlı: {deviceName || 'Bluetooth Cihazı'}
-              </Text>
+      <View style={styles.infoCard}>
+        <View style={styles.infoRow}>
+          <Icon
+            name="bluetooth"
+            size={32}
+            color={isConnecting ? '#F59E0B' : connectedDevice ? '#10B981' : '#EF4444'}
+          />
+          <View style={{ flex: 1 }}>
+            <View style={styles.statusLabelRow}>
+              <Text style={styles.label}>BAĞLANTI DURUMU</Text>
+              {isConnecting ? (
+                <View style={styles.connectingBadge}>
+                  <ActivityIndicator
+                    size="small"
+                    color="#F59E0B"
+                    style={styles.smallSpinner}
+                  />
+                  <Text style={styles.connectingText}>Bağlanıyor...</Text>
+                </View>
+              ) : connectedDevice ? (
+                <View style={styles.onlineBadge}>
+                  <View style={styles.onlineDot} />
+                  <Text style={styles.onlineText}>Bağlandı</Text>
+                </View>
+              ) : (
+                <View style={styles.offlineBadge}>
+                  <View style={styles.offlineDot} />
+                  <Text style={styles.offlineText}>Bağlı Değil</Text>
+                </View>
+              )}
             </View>
-            <TouchableOpacity style={styles.disconnectButton} onPress={disconnectDevice}>
-              <Text style={styles.disconnectButtonText}>Bağlantıyı Kes</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Kullanılabilir Cihazlar</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Icon name="close" size={24} color="#000000" />
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={availableDevices}
-              renderItem={renderDeviceItem}
-              keyExtractor={(item, index) => index.toString()}
-              style={styles.deviceList}
-            />
+            <Text style={styles.infoText}>
+              {isConnecting
+                ? 'Lütfen bekleyin...'
+                : connectedDevice
+                ? deviceName || 'Seri Cihaz'
+                : 'Cihaz seçilmedi'}
+            </Text>
           </View>
         </View>
-      </Modal>
+        <TouchableOpacity
+          style={styles.scanBtn}
+          onPress={selectAndConnect}
+          disabled={isConnecting}
+        >
+          <Text style={styles.scanBtnText}>Cihaz Seç ve Bağlan</Text>
+        </TouchableOpacity>
+        {connectedDevice && !isConnecting && (
+          <TouchableOpacity style={styles.disconnectBtn} onPress={disconnectDevice}>
+            <Text style={styles.disconnectBtnText}>Bağlantıyı Kes</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {connectedDevice && !isConnecting && (
+        <TouchableOpacity
+          style={styles.communicationBtn}
+          onPress={() => navigation.navigate('Communication')}
+        >
+          <View style={styles.communicationBtnContent}>
+            <Icon name="swap-horizontal" size={28} color="#fff" />
+            <Text style={styles.communicationBtnText}>İletişim Ekranına Git</Text>
+          </View>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }

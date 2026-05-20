@@ -45,8 +45,9 @@ const AppNavigator = () => {
         prefixes: [],
         config: {
           screens: {
-            BluetoothConnection: '/BluetoothConnection',
-            Communication: '/Communication',
+            Home: '',
+            BluetoothConnection: 'BluetoothConnection',
+            Communication: 'Communication',
           },
         },
       }}
