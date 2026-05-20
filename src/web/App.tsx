@@ -41,6 +41,16 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer
+      documentTitle={{
+        formatter: (_, route) => {
+          const titles: Record<string, string> = {
+            Home: 'Ana Sayfa',
+            BluetoothConnection: 'Bluetooth Yönetimi',
+            Communication: 'İletişim',
+          };
+          return titles[route?.name ?? ''] ?? 'Bluetooth Test';
+        },
+      }}
       linking={{
         prefixes: [],
         config: {

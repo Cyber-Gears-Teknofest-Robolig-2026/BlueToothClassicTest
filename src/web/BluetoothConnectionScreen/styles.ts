@@ -158,10 +158,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#EF4444',
   },
   disconnectBtnText: {
-    color: '#EF4444',
+    color: '#F1F5F9',
     fontWeight: '800',
   },
 });
