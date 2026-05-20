@@ -96,12 +96,14 @@ export default function BluetoothConnectionScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Bluetooth Yönetimi</Text>
         <TouchableOpacity
-          onPress={() =>
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Home' }],
-            })
-          }
+          onPress={() => {
+            const idx = navigation.getState()?.index ?? 0;
+            if (idx > 0 && typeof window !== 'undefined') {
+              window.history.go(-idx);
+            } else {
+              navigation.navigate('Home');
+            }
+          }}
           style={styles.homeBtn}
         >
           <Icon name="home" size={24} color="#1E293B" />

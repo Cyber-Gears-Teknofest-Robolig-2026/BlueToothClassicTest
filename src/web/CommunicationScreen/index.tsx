@@ -287,12 +287,14 @@ export default function CommunicationScreen() {
 
         <View style={styles.headerIcons}>
           <TouchableOpacity
-            onPress={() =>
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Home' }],
-              })
-            }
+            onPress={() => {
+              const idx = navigation.getState()?.index ?? 0;
+              if (idx > 0 && typeof window !== 'undefined') {
+                window.history.go(-idx);
+              } else {
+                navigation.navigate('Home');
+              }
+            }}
             style={styles.headerIconButton}
           >
             <Icon name="home" size={25} color="#000000" />
