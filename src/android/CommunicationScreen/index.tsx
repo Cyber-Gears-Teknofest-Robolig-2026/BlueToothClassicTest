@@ -335,7 +335,7 @@ export default function CommunicationScreen() {
                 </View>
               </View>
             )}
-            onContentSizeChange={() => {
+            onLayout={() => {
               scrollToBottom(true, 100);
             }}
           />
@@ -352,8 +352,8 @@ export default function CommunicationScreen() {
               value={inputText}
               onChangeText={setInputText}
               onFocus={() => {
-                setIsFocused(true);
-                scrollToBottom(true, 150);
+                //setIsFocused(true);
+                //scrollToBottom(true, 150);
               }}
               onBlur={() => setIsFocused(false)}
               maxLength={1000}

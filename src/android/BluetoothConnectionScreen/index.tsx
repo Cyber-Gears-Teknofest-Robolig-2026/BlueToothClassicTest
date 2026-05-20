@@ -123,6 +123,14 @@ export default function BluetoothConnectionScreen() {
 
   const openBluetoothModal = async () => {
 
+    try {
+      await RNBluetoothClassic.requestBluetoothEnabled();
+    } 
+    catch (error) {
+      Alert.alert('Hata', 'Bu ayara girilebilmesi için Bluetooth açık olmalıdır!');
+      return;
+    }
+
     setModalVisible(true);
     animateToPoint(SNAP_FULL);
 
@@ -158,6 +166,13 @@ export default function BluetoothConnectionScreen() {
   };
 
   const connectToDevice = async (device: BluetoothDevice) => {
+    try {
+      await RNBluetoothClassic.requestBluetoothEnabled();
+    } 
+    catch (error) {
+      Alert.alert('Hata', 'Bu cihaza bağlanabilmesi için Bluetooth açık olmalıdır!');
+      return;
+    }
     try {
       closeModal();
       setIsConnecting(true);

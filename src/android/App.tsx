@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Alert } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -32,6 +32,59 @@ const AppNavigator = () => {
   const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
   const manuallyDisconnected = useBluetoothStore((state) => state.manuallyDisconnected);
   const setManuallyDisconnected = useBluetoothStore((state) => state.setManuallyDisconnected);
+  const showBluetoothAlert = useRef(false);
+
+  useEffect(() => {
+    const bluetoothDisabledSubscription = RNBluetoothClassic.onBluetoothDisabled(async () => {
+      Alert.alert(
+        "Hata",
+        "Bluetooth kapalı!"
+      );
+      showBluetoothAlert.current = true;
+      await connectedDevice?.disconnect();
+      setManuallyDisconnected(false);
+      setConnectedDevice(null);
+    });
+    return () => {
+      bluetoothDisabledSubscription.remove();
+    };
+  }, []);
+
+  /*useEffect(() => {
+    const bluetoothCheckInterval = setInterval(async () => {
+      try {
+        const enabled = await RNBluetoothClassic.isBluetoothEnabled();
+
+        // setIsBluetoothEnabled(enabled);
+
+        if (!enabled) {
+          if (!showBluetoothAlert.current) {
+            console.log("Bluetooth tamamen kapatıldı");
+            Alert.alert(
+              "Hata",
+              "Bluetooth kapalı!"
+            );
+            showBluetoothAlert.current = true;
+          }
+
+          // connectedDeviceRef.current = null;
+          setConnectedDevice(null);
+          // setIsConnected(false);
+          setManuallyDisconnected(false);
+        }
+        else {
+          showBluetoothAlert.current = false;
+        }
+      } catch (error) {
+        console.log("Bluetooth kontrol hatası:", error);
+      }
+    }, 1000);
+
+    return () => {
+      //disconnectedSubscription.remove();
+      clearInterval(bluetoothCheckInterval);
+    };
+  }, []);*/
 
   useEffect(() => {
     const disconnectSubscription = RNBluetoothClassic.onDeviceDisconnected(() => {
