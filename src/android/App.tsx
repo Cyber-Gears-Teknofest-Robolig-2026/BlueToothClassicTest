@@ -50,42 +50,6 @@ const AppNavigator = () => {
     };
   }, []);
 
-  /*useEffect(() => {
-    const bluetoothCheckInterval = setInterval(async () => {
-      try {
-        const enabled = await RNBluetoothClassic.isBluetoothEnabled();
-
-        // setIsBluetoothEnabled(enabled);
-
-        if (!enabled) {
-          if (!showBluetoothAlert.current) {
-            console.log("Bluetooth tamamen kapatıldı");
-            Alert.alert(
-              "Hata",
-              "Bluetooth kapalı!"
-            );
-            showBluetoothAlert.current = true;
-          }
-
-          // connectedDeviceRef.current = null;
-          setConnectedDevice(null);
-          // setIsConnected(false);
-          setManuallyDisconnected(false);
-        }
-        else {
-          showBluetoothAlert.current = false;
-        }
-      } catch (error) {
-        console.log("Bluetooth kontrol hatası:", error);
-      }
-    }, 1000);
-
-    return () => {
-      //disconnectedSubscription.remove();
-      clearInterval(bluetoothCheckInterval);
-    };
-  }, []);*/
-
   useEffect(() => {
     const disconnectSubscription = RNBluetoothClassic.onDeviceDisconnected(() => {
       setConnectedDevice(null);
