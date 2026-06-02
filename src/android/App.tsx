@@ -8,7 +8,7 @@ import RNBluetoothClassic, {
 import {
   NavigationContainer,
   useNavigation,
-  DarkTheme, 
+  DarkTheme,
   DefaultTheme,
 } from "@react-navigation/native";
 import {
@@ -20,16 +20,15 @@ import { create } from "zustand";
 import HomeScreen from "./HomeScreen";
 import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
 import CommunicationScreen from "./CommunicationScreen";
-import { 
+import {
   RootStackParamList,
-  AppNavigationProp, 
-  useBluetoothStore, 
+  AppNavigationProp,
+  useBluetoothStore,
 } from "./constants";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
-
 
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
   const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
@@ -67,33 +66,33 @@ const AppNavigator = () => {
   }, []);
 
   return (
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Home"
-          screenOptions={{
-            headerShown: false,
-          }}
-          
-        >
-          <Stack.Screen name="Home">
-            {() => (
-              <HomeScreen />
-            )}
-          </Stack.Screen>
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Home"
+        screenOptions={{
+          headerShown: false,
+        }}
 
-          <Stack.Screen name="BluetoothConnection">
-            {() => (
-              <BluetoothConnectionScreen />
-            )}
-          </Stack.Screen>
+      >
+        <Stack.Screen name="Home">
+          {() => (
+            <HomeScreen />
+          )}
+        </Stack.Screen>
 
-          <Stack.Screen name="Communication">
-            {() => (
-              <CommunicationScreen />
-            )}
-          </Stack.Screen>
-        </Stack.Navigator>
-      </NavigationContainer>
+        <Stack.Screen name="BluetoothConnection">
+          {() => (
+            <BluetoothConnectionScreen />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="Communication">
+          {() => (
+            <CommunicationScreen />
+          )}
+        </Stack.Screen>
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
 
