@@ -1,61 +1,60 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
+  container: { 
+    flex: 1, 
+    backgroundColor: "#F8FAFC" 
   },
-  mainHeader: {
-    paddingTop: 20,
-    paddingBottom: 30,
+  mainHeader: { 
+    paddingTop: 20, 
+    paddingBottom: 10 
   },
-  mainHeaderText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 8,
+  mainHeaderText: { 
+    fontSize: 28, 
+    fontWeight: "900", 
+    color: "#1E293B" 
   },
-  subHeaderText: {
-    fontSize: 16,
-    color: '#64748B',
+  subHeaderText: { 
+    fontSize: 16, 
+    color: "#64748B", 
+    fontWeight: "500", 
+    marginTop: 4 
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 12,
+  scrollContent: { 
+    paddingHorizontal: 25, 
+    paddingTop: 10, 
+    paddingBottom: 40, 
+    gap: 16 
   },
-  menuCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+  menuCard: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    backgroundColor: "#fff", 
+    paddingVertical: 20, 
+    paddingHorizontal: 20, 
+    borderRadius: 24, 
+    borderWidth: 1, 
+    borderColor: "#F1F5F9", 
+    elevation: 3 
   },
-  menuIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+  menuIconCircle: { 
+    padding: 14, 
+    borderRadius: 18, 
+    marginRight: 16 
   },
-  menuTextContent: {
-    flex: 1,
+  menuTextContent: { 
+    flex: 1 
   },
-  menuTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0F172A',
-    marginBottom: 4,
+  menuTitle: { 
+    fontSize: 17, 
+    fontWeight: "800", 
+    color: "#1E293B", 
+    marginBottom: 4 
   },
-  menuDesc: {
-    fontSize: 14,
-    color: '#64748B',
+  menuDesc: { 
+    fontSize: 13, 
+    color: "#64748B", 
+    fontWeight: "500" 
   },
 });
 

@@ -17,17 +17,20 @@ import {
 } from "react-native";
 import { useState, useRef, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import RNBluetoothClassic, { BluetoothDevice } from "react-native-bluetooth-classic";
+import RNBluetoothClassic from "react-native-bluetooth-classic";
+import { startBleScan, connectToNusDevice, stopBleScan, ensureBluetoothOn, bleManager, NUS_SERVICE } from "../bleAdapter";
 import { 
   useSafeAreaInsets, 
-  SafeAreaView 
+  SafeAreaView,
+  SafeAreaProvider
 } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import styles from './styles';
 import { useNavigation } from "@react-navigation/native";
 import { 
   AppNavigationProp,
-  useBluetoothStore 
+  useBluetoothStore,
+  BluetoothDevice
 } from "../constants";
 
 export default function BluetoothConnectionScreen() {
@@ -49,17 +52,19 @@ export default function BluetoothConnectionScreen() {
   const SNAP_PARTIAL = SCREEN_HEIGHT * 0.35; 
   const SNAP_CLOSED = SCREEN_HEIGHT;
 
-  const [devices, setDevices] = useState<BluetoothDevice[]>([]);
+  const [devices, setDevices] = useState<any[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [lastConnectedDevice, setLastConnectedDevice] = useState<BluetoothDevice | null>(null);
+  const [lastConnectedDevice, setLastConnectedDevice] = useState<any | null>(null);
 
   const panY = useRef(new Animated.Value(SNAP_CLOSED)).current;
   const currentSnapPoint = useRef(SNAP_CLOSED);
+  const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadLastConnectedDevice();
+    return () => stopBleScan();
   }, []);
 
   const loadLastConnectedDevice = async () => {
@@ -119,12 +124,41 @@ export default function BluetoothConnectionScreen() {
     try { RNBluetoothClassic.cancelDiscovery(); } catch (e) {}
   };
 
+  const requestBlePermissions = async (): Promise<boolean> => {
+    const result = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+    ]);
+    return (
+      result[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === "granted" &&
+      result[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === "granted"
+    );
+  };
+
+  const stopScan = () => {
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = null;
+    }
+    try { stopBleScan(); } catch (e) {}
+    setScanning(false);
+  };
+
+  const ensureBluetoothOnLocal = async (): Promise<boolean> => {
+    return await ensureBluetoothOn();
+  };
+
   const openBluetoothModal = async () => {
 
-    try {
-      await RNBluetoothClassic.requestBluetoothEnabled();
-    } 
-    catch (error) {
+    // Request permissions for BLE
+    const permitted = await requestBlePermissions();
+    if (!permitted) {
+      Alert.alert('Permissions Required', 'Bluetooth permissions are required to scan and connect to devices.');
+      return;
+    }
+
+    // Ensure BLE powered on
+    if (!(await ensureBluetoothOnLocal())) {
       Alert.alert('Hata', 'Bu ayara girilebilmesi için Bluetooth açık olmalıdır!');
       return;
     }
@@ -132,40 +166,62 @@ export default function BluetoothConnectionScreen() {
     setModalVisible(true);
     animateToPoint(SNAP_FULL);
 
+    setDevices([]);
     setScanning(true);
 
-    const permissionsResult = await PermissionsAndroid.requestMultiple([
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-    ]);
-
-    for (const [key, value] of Object.entries(permissionsResult)) {
-      if (value !== 'granted') {
-        Alert.alert('Permissions Required', 'Bluetooth permissions are required to scan and connect to devices.');
-        return;
-      }
-    }
-
-    await RNBluetoothClassic.cancelDiscovery();
-
+    // Classic discovery (keep existing behavior)
+    try {
+      await RNBluetoothClassic.cancelDiscovery();
+    } catch (e) {}
     const bonded = await RNBluetoothClassic.getBondedDevices();
-
     setDevices(bonded.map((d: any) => ({ ...d, bonded: true })));
 
-    const discovered = await RNBluetoothClassic.startDiscovery();
+    try {
+      const discovered = await RNBluetoothClassic.startDiscovery();
+      const map = new Map();
+      [...bonded, ...discovered].forEach(d => map.set(d.address, { 
+        ...d, bonded: bonded.some(b => b.address === d.address) 
+      }));
+      setDevices(Array.from(map.values()));
+    } catch (e) {
+      // ignore classic discovery errors
+    }
 
-    const map = new Map();
-    [...bonded, ...discovered].forEach(d => map.set(d.address, { 
-      ...d, bonded: bonded.some(b => b.address === d.address) 
-    }));
-    setDevices(Array.from(map.values()));
+    // Start BLE scan for NUS devices and add progressively
+    const found = new Map<string, any>();
+    try {
+      (bleManager as any).startDeviceScan([NUS_SERVICE], null, (error: any, device: any) => {
+        if (error) {
+          stopScan();
+          Alert.alert('Hata', 'Cihazlar taranamadı.');
+          return;
+        }
+        if (device && !found.has(device.id)) {
+          found.set(device.id, { id: device.id, name: device.name || device.localName });
+          // Merge into devices list using BLE: prefix for address to avoid collision
+          setDevices(prev => {
+            const map = new Map(prev.map((d: any) => [d.address, d]));
+            const bleAddr = `BLE:${device.id}`;
+            if (!map.has(bleAddr)) map.set(bleAddr, { id: device.id, address: bleAddr, name: device.name || device.localName, bonded: false });
+            return Array.from(map.values());
+          });
+        }
+      });
 
-    setScanning(false);
+      // stop after 10s
+      scanTimeoutRef.current = setTimeout(stopScan, 10000);
+    } catch (e) {
+      setScanning(false);
+    }
   };
 
   const connectToDevice = async (device: BluetoothDevice) => {
+    // BLE devices have address starting with 'BLE:'
+    const isBle = device.address?.toString().startsWith("BLE:");
     try {
-      await RNBluetoothClassic.requestBluetoothEnabled();
+      if (!isBle) {
+        await RNBluetoothClassic.requestBluetoothEnabled();
+      }
     } 
     catch (error) {
       Alert.alert('Hata', 'Bu cihaza bağlanabilmesi için Bluetooth açık olmalıdır!');
@@ -174,18 +230,45 @@ export default function BluetoothConnectionScreen() {
     try {
       closeModal();
       setIsConnecting(true);
-      const connected = await RNBluetoothClassic.connectToDevice(device.address, {
-        connectorType: "rfcomm",
-        connectionType: "binary",
-        //READ_SIZE: 1,
-        //READ_TIMEOUT: 0,
-        delimiter: "\n",
-        encoding: "utf-8",
-      });
-      setConnectedDevice(connected);
-      if (connected) {
-        setMessages([]);
-        saveLastConnectedDevice(device);
+      if (isBle) {
+        // BLE path: device.id is the original BLE id
+        const deviceId = device.id;
+        const connected = await connectToNusDevice(deviceId);
+        setConnectedDevice(connected);
+        if (connected) {
+          setMessages([]);
+          saveLastConnectedDevice({ ...device, address: device.address });
+        }
+      } else {
+        const classicConnected = await RNBluetoothClassic.connectToDevice(device.address, {
+          connectorType: "rfcomm",
+          connectionType: "binary",
+          delimiter: "\n",
+          encoding: "utf-8",
+        });
+        const wrapped = {
+          id: classicConnected?.id || device.address,
+          address: classicConnected?.address || device.address,
+          name: classicConnected?.name || device.name,
+          write: async (data: string) => {
+            await classicConnected?.write(data);
+          },
+          disconnect: async () => {
+            await classicConnected?.disconnect();
+          },
+          onDataReceived: (listener: any) => {
+                    const sub = (RNBluetoothClassic as any).onDataReceived((event: any) => {
+              const b64 = Buffer.from(event.data, "utf-8").toString("base64");
+              listener({ data: b64 });
+            });
+            return { remove: () => sub.remove() };
+          },
+        };
+        setConnectedDevice(wrapped);
+        if (classicConnected) {
+          setMessages([]);
+          saveLastConnectedDevice(wrapped);
+        }
       }
       setIsConnecting(false);
     }
@@ -224,7 +307,7 @@ export default function BluetoothConnectionScreen() {
   const renderDevice = ({ item }: { item: BluetoothDevice }) => {
 
     const isConnected = connectedDevice?.address === item.address;
-    const isPaired = item.bonded;
+    const isPaired = (item as any).bonded;
     const cardStyle = isConnected ? styles.connectedCard : isPaired ? styles.pairedCard : styles.newCard;
     const iconColor = isConnected ? "#fff" : isPaired ? "#0284C7" : "#64748B";
 
@@ -344,43 +427,45 @@ export default function BluetoothConnectionScreen() {
       </ScrollView>
 
       <Modal visible={modalVisible} transparent animationType="none" statusBarTranslucent onRequestClose={closeModal}>
-        <View style={styles.modalOverlay}>
-          <Animated.View style={[styles.modalBox, { height: SCREEN_HEIGHT, transform: [{ translateY: panY }] }]}>
-            <View style={{ flex: 1 }}>
-              <View {...panResponder.panHandlers} style={styles.interactiveHeader}>
-                <View style={styles.dragHandle} />
-                <View style={styles.modalHeaderContent}>
-                  <View style={styles.titleWrapper}>
-                    <View style={styles.titleIconCircle}>
-                      <Icon name="bluetooth" size={20} color="#0984e3" />
+          <SafeAreaProvider>
+            <View style={styles.modalOverlay}>
+              <Animated.View style={[styles.modalBox, { height: SCREEN_HEIGHT, transform: [{ translateY: panY }] }]}>
+                <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
+                  <View {...panResponder.panHandlers} style={styles.interactiveHeader}>
+                    <View style={styles.dragHandle} />
+                    <View style={styles.modalHeaderContent}>
+                      <View style={styles.titleWrapper}>
+                        <View style={styles.titleIconCircle}>
+                          <Icon name="bluetooth" size={20} color="#0984e3" />
+                        </View>
+                        <Text style={styles.modalTitle}>Bluetooth Cihazları</Text>
+                      </View>
+                      <TouchableOpacity onPress={closeModal} style={styles.closeCircle}>
+                        <Icon name="close" size={20} color="#64748B" />
+                      </TouchableOpacity>
                     </View>
-                    <Text style={styles.modalTitle}>Bluetooth Cihazları</Text>
                   </View>
-                  <TouchableOpacity onPress={closeModal} style={styles.closeCircle}>
-                    <Icon name="close" size={20} color="#64748B" />
-                  </TouchableOpacity>
-                </View>
-              </View>
 
-              {scanning && (
-                <View style={styles.scanningIndicator}>
-                  <ActivityIndicator size="small" color="#0984e3" />
-                  <Text style={styles.scanningIndicatorText}>Yakındaki cihazlar taranıyor...</Text>
-                </View>
-              )}
+                  {scanning && (
+                    <View style={styles.scanningIndicator}>
+                      <ActivityIndicator size="small" color="#0984e3" />
+                      <Text style={styles.scanningIndicatorText}>Yakındaki cihazlar taranıyor...</Text>
+                    </View>
+                  )}
 
-              <FlatList
-                data={devices}
-                keyExtractor={(item) => item.address}
-                renderItem={renderDevice}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.listContentStyle, { paddingBottom: insets.bottom + 35, paddingTop: insets.top - 35 }]}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-                ListEmptyComponent={!scanning ? <Text style={styles.emptyStateText}>Cihaz bulunamadı</Text> : null}
-              />
+                  <FlatList
+                    data={devices}
+                    keyExtractor={(item) => item.address}
+                    renderItem={renderDevice}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={[styles.listContentStyle, { paddingBottom: insets.bottom + 35, paddingTop: insets.top - 35 }]}
+                    ItemSeparatorComponent={() => <View style={styles.separator} />}
+                    ListEmptyComponent={!scanning ? <Text style={styles.emptyStateText}>Cihaz bulunamadı</Text> : null}
+                  />
+                </SafeAreaView>
+              </Animated.View>
             </View>
-          </Animated.View>
-        </View>
+          </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );

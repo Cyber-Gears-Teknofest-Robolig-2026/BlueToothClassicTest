@@ -1,6 +1,17 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { BluetoothDevice } from "react-native-bluetooth-classic";
+import { Buffer } from "buffer";
 import { create } from "zustand";
+
+export type BluetoothDevice = {
+  id: string;
+  address: string; // ekran uyumluluğu için id'nin takma adı
+  name: string;
+  write: (data: string) => Promise<void>;
+  disconnect: () => Promise<void>;
+  onDataReceived: (
+    listener: (event: { data: string }) => void
+  ) => { remove: () => void };
+};
 
 export type RootStackParamList = {
   Home: undefined;
