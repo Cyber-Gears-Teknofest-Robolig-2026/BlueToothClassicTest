@@ -129,13 +129,14 @@ export default function HomeScreen() {
           styles.mainHeader,
           {
             paddingHorizontal: 25,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
+            alignItems: "stretch",
           },
         ]}
       >
-        <View style={{ flex: 1 }}>
+        <View style={{ alignItems: "flex-end", marginBottom: 8 }}>
+          <ThemeToggle />
+        </View>
+        <View>
           <Text style={[styles.mainHeaderText, { color: colors.textPrimary }]}>
             BlueTooth Classic Test
           </Text>
@@ -143,7 +144,6 @@ export default function HomeScreen() {
             Lütfen bir işlem seçin
           </Text>
         </View>
-        <ThemeToggle />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
