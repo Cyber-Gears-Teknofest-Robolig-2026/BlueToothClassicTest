@@ -15,10 +15,15 @@ import type { BluetoothApi } from "@/src/backend";
  */
 function loadBackend(): BluetoothApi | null {
   try {
-    if (Platform.OS === "web") {
-      return require("./backend/web").default as BluetoothApi;
+    switch (Platform.OS) {
+      case "web":
+        return require("./backend/web").default as BluetoothApi;
+      case "android":
+        return require("./backend/android").default as BluetoothApi;
+      // add `case "ios":` here when an iOS backend is available
+      default:
+        return null;
     }
-    return require("./backend/android").default as BluetoothApi;
   } catch {
     return null;
   }
@@ -27,11 +32,25 @@ function loadBackend(): BluetoothApi | null {
 const backend = loadBackend();
 
 export default function App() {
-  const isWeb = Platform.OS === "web";
-  const PlatformApp = isWeb ? WebApp : AndroidApp;
-  const PlatformBluetoothProvider = isWeb
-    ? WebBluetoothProvider
-    : AndroidBluetoothProvider;
+  let PlatformApp: React.ComponentType<any>;
+  let PlatformBluetoothProvider: React.ComponentType<any>;
+
+  switch (Platform.OS) {
+    case "web":
+      PlatformApp = WebApp;
+      PlatformBluetoothProvider = WebBluetoothProvider;
+      break;
+    case "android":
+      PlatformApp = AndroidApp;
+      PlatformBluetoothProvider = AndroidBluetoothProvider;
+      break;
+    // add `case "ios":` here when iOS frontend/provider exist
+    default:
+      // fallback to Android for now; change as platforms are added
+      PlatformApp = AndroidApp;
+      PlatformBluetoothProvider = AndroidBluetoothProvider;
+  }
+
   return (
     <PlatformBluetoothProvider backend={backend as any}>
       <PlatformApp />
