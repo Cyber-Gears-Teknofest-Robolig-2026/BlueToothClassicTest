@@ -2,7 +2,8 @@ import React from "react";
 import { Platform } from "react-native";
 import WebApp from "@/src/frontend/web/App";
 import AndroidApp from "@/src/frontend/android/App";
-import { BluetoothProvider } from "@/src/frontend/android/BluetoothContext";
+import { BluetoothProvider as WebBluetoothProvider } from "@/src/frontend/web/BluetoothContext";
+import { BluetoothProvider as AndroidBluetoothProvider } from "@/src/frontend/android/BluetoothContext";
 import type { BluetoothApi } from "@/src/backend";
 
 /**
@@ -26,10 +27,14 @@ function loadBackend(): BluetoothApi | null {
 const backend = loadBackend();
 
 export default function App() {
-  const PlatformApp = Platform.OS === "web" ? WebApp : AndroidApp;
+  const isWeb = Platform.OS === "web";
+  const PlatformApp = isWeb ? WebApp : AndroidApp;
+  const PlatformBluetoothProvider = isWeb
+    ? WebBluetoothProvider
+    : AndroidBluetoothProvider;
   return (
-    <BluetoothProvider backend={backend}>
+    <PlatformBluetoothProvider backend={backend as any}>
       <PlatformApp />
-    </BluetoothProvider>
+    </PlatformBluetoothProvider>
   );
 }

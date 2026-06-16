@@ -4,6 +4,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
   NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "./HomeScreen";
@@ -11,6 +13,7 @@ import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
 import CommunicationScreen from "./CommunicationScreen";
 import { RootStackParamList, useBluetoothStore } from "./constants";
 import { useBluetooth } from "./BluetoothContext";
+import { useThemeColors, useEffectiveTheme } from "./theme";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -49,8 +52,24 @@ const AppNavigator = () => {
     return () => sub.remove();
   }, [bt]);
 
+  const colors = useThemeColors();
+  const effective = useEffectiveTheme();
+  const base = effective === "dark" ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...base,
+    colors: {
+      ...base.colors,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.border,
+      primary: colors.primary,
+      notification: colors.danger,
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{ headerShown: false }}

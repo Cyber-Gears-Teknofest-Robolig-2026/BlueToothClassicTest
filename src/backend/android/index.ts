@@ -9,6 +9,7 @@ import { PermissionsAndroid } from "react-native";
 import RNBluetoothClassic, {
   BluetoothDevice as NativeDevice,
 } from "react-native-bluetooth-classic";
+import { Buffer } from "buffer";
 import type {
   BluetoothApi,
   ConnectedDevice,
@@ -39,9 +40,11 @@ const wrapConnectedDevice = (device: NativeDevice): ConnectedDevice => ({
     await device.disconnect();
   },
   onDataReceived: (listener) => {
-    // Çözülmüş metni doğrudan iletiriz; frontend ek bir kod çözme yapmaz.
+    // react-native-bluetooth-classic verileri base64 olarak yollar; burada
+    // utf-8'e çözüp frontend'e açık metin olarak iletiriz.
     const sub = device.onDataReceived((event) => {
-      listener({ data: event.data });
+      const decoded = Buffer.from(event.data, "base64").toString("utf-8");
+      listener({ data: decoded });
     });
     return { remove: () => sub.remove() };
   },

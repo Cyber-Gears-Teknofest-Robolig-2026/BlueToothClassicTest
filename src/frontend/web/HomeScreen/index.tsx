@@ -3,68 +3,145 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import styles from "./styles";
 import { useNavigation } from "@react-navigation/native";
 import { AppNavigationProp } from "../constants";
+import {
+  useThemeColors,
+  useThemeStore,
+  useEffectiveTheme,
+  type ThemeMode,
+} from "../theme";
 
 const BluetoothConnectionButton = () => {
   const navigation = useNavigation<AppNavigationProp>();
+  const colors = useThemeColors();
   return (
-    <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => navigation.navigate('BluetoothConnection')}>
-      <View style={[styles.menuIconCircle, { backgroundColor: "#E0F2FE" }]}>
-        <MaterialCommunityIcons name="bluetooth" size={30} color="#0284C7" />
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      onPress={() => navigation.navigate("BluetoothConnection")}
+    >
+      <View style={[styles.menuIconCircle, { backgroundColor: colors.primarySoft }]}>
+        <MaterialCommunityIcons name="bluetooth" size={30} color={colors.primary} />
       </View>
       <View style={styles.menuTextContent}>
-        <Text style={styles.menuTitle}>Bluetooth Bağlantısı</Text>
-        <Text style={styles.menuDesc}>Cihazları tara, eşleş ve yönet</Text>
+        <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>
+          Bluetooth Bağlantısı
+        </Text>
+        <Text style={[styles.menuDesc, { color: colors.textSecondary }]}>
+          Cihazları tara, eşleş ve yönet
+        </Text>
       </View>
-      <MaterialCommunityIcons name="chevron-right" size={24} color="#CBD5E1" />
+      <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textMuted} />
     </TouchableOpacity>
   );
-}
+};
 
 const CommunicationButton = () => {
   const navigation = useNavigation<AppNavigationProp>();
+  const colors = useThemeColors();
   return (
-    <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => navigation.navigate('Communication')}>
-      <View style={[styles.menuIconCircle, { backgroundColor: "#DCFCE7" }]}>
-        <MaterialCommunityIcons name="swap-horizontal" size={30} color="#15803D" />
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      onPress={() => navigation.navigate("Communication")}
+    >
+      <View style={[styles.menuIconCircle, { backgroundColor: colors.successSoft }]}>
+        <MaterialCommunityIcons name="swap-horizontal" size={30} color={colors.success} />
       </View>
       <View style={styles.menuTextContent}>
-        <Text style={styles.menuTitle}>Cihaz İletişimi</Text>
-        <Text style={styles.menuDesc}>Bağlı cihaz ile veri alışverişi yap</Text>
+        <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>
+          Cihaz İletişimi
+        </Text>
+        <Text style={[styles.menuDesc, { color: colors.textSecondary }]}>
+          Bağlı cihaz ile veri alışverişi yap
+        </Text>
       </View>
-      <MaterialCommunityIcons name="chevron-right" size={24} color="#CBD5E1" />
+      <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textMuted} />
     </TouchableOpacity>
   );
-}
+};
 
-export default function HomeScreen() {
+const ThemeToggle = () => {
+  const colors = useThemeColors();
+  const mode = useThemeStore((s) => s.mode);
+  const setMode = useThemeStore((s) => s.setMode);
+
+  const Btn = ({ value, icon }: { value: ThemeMode; icon: string }) => {
+    const active = mode === value;
+    return (
+      <TouchableOpacity
+        onPress={() => setMode(value)}
+        style={{
+          padding: 10,
+          borderRadius: 12,
+          backgroundColor: active ? colors.primarySoft : "transparent",
+          marginLeft: 6,
+        }}
+      >
+        <MaterialCommunityIcons
+          name={icon}
+          size={22}
+          color={active ? colors.primary : colors.textMuted}
+        />
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={[
-      "top",
-      "left",
-      "right",
-      "bottom"
-    ]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <Btn value="light" icon="weather-sunny" />
+      <Btn value="dark" icon="weather-night" />
+      <Btn value="system" icon="theme-light-dark" />
+    </View>
+  );
+};
 
-      <View style={[styles.mainHeader, { paddingHorizontal: 25 }]}
+export default function HomeScreen() {
+  const colors = useThemeColors();
+  const effective = useEffectiveTheme();
+
+  return (
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top", "left", "right", "bottom"]}
+    >
+      <StatusBar
+        barStyle={effective === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
+      />
+
+      <View
+        style={[
+          styles.mainHeader,
+          {
+            paddingHorizontal: 25,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          },
+        ]}
       >
-        <Text style={styles.mainHeaderText}>Cyber Gears BlueTooth Low Energy</Text>
-        <Text style={styles.subHeaderText}>Lütfen bir işlem seçin</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.mainHeaderText, { color: colors.textPrimary }]}>
+            BlueTooth Classic Test
+          </Text>
+          <Text style={[styles.subHeaderText, { color: colors.textSecondary }]}>
+            Lütfen bir işlem seçin
+          </Text>
+        </View>
+        <ThemeToggle />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <BluetoothConnectionButton />
         <CommunicationButton />
       </ScrollView>
-
     </SafeAreaView>
   );
-};
+}

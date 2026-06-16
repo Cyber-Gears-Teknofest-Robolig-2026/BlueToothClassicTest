@@ -15,6 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { AppNavigationProp } from "../constants";
 import { useBluetoothStore } from "../constants";
 import type { Subscription } from "../BluetoothContext";
+import { useThemeColors, useEffectiveTheme } from "../theme";
 
 interface Message {
   id: number;
@@ -24,6 +25,8 @@ interface Message {
 }
 
 export default function CommunicationScreen() {
+  const colors = useThemeColors();
+  const effective = useEffectiveTheme();
   const navigation = useNavigation<AppNavigationProp>();
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
   const messages = useBluetoothStore((state) => state.messages);
@@ -114,38 +117,36 @@ export default function CommunicationScreen() {
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
-    if (!connectedDevice) {
-      window.alert("Hata: Cihaz bağlı değil.");
-      return;
-    }
 
     const sendedData = inputText.trim();
 
     try {
-      await connectedDevice.write(sendedData + "\r\n");
-
-      setMessages([
-        ...messages,
-        {
-          id: currentMessageId.current,
-          text: sendedData,
-          mode: "sent",
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ]);
-
-      currentMessageId.current++;
-      setInputText("");
-      scrollToBottom(true, 150);
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
+      if (connectedDevice) {
+        await connectedDevice.write(sendedData + "\r\n");
+      }
     } catch (e) {
-      window.alert("Hata: Veri gönderilemedi.");
+      // Cihaza yazma başarısızsa mesajı yine de yerelde göster.
     }
+
+    setMessages([
+      ...messages,
+      {
+        id: currentMessageId.current,
+        text: sendedData,
+        mode: "sent",
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    ]);
+
+    currentMessageId.current++;
+    setInputText("");
+    scrollToBottom(true, 150);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
   };
 
   const clearMessages = () => {
@@ -193,13 +194,13 @@ export default function CommunicationScreen() {
         <View
           style={[
             styles.messageBubble,
-            isSent ? styles.sentBubble : styles.receivedBubble,
+            { backgroundColor: isSent ? colors.sentBubble : colors.receivedBubble },
           ]}
         >
           <Text
             style={[
               styles.messageText,
-              isSent ? styles.sentText : styles.receivedText,
+              { color: isSent ? colors.sentText : colors.receivedText },
             ]}
             selectable
           >
@@ -209,7 +210,7 @@ export default function CommunicationScreen() {
             <Text
               style={[
                 styles.messageTime,
-                isSent ? styles.sentTime : styles.receivedTime,
+                { color: effective === "dark" ? "#94A3B8" : "#667781" },
               ]}
             >
               {item.time}
@@ -221,26 +222,35 @@ export default function CommunicationScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top", "left", "right", "bottom"]}
+    >
+      <StatusBar
+        barStyle={effective === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={colors.surface}
+      />
 
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View style={styles.headerTopRow}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Icon name="arrow-left" size={24} color="#000000" />
+            <Icon name="arrow-left" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
           <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>{deviceName || "Bağlı Değil"}</Text>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+              {deviceName || "Bağlı Değil"}
+            </Text>
             <Text
-              style={
+              style={[
                 connectedDevice
                   ? styles.headerStatusConnected
-                  : styles.headerStatusNotConnected
-              }
+                  : styles.headerStatusNotConnected,
+                { color: connectedDevice ? colors.success : colors.danger },
+              ]}
             >
               {connectedDevice ? "Çevrimiçi" : "Çevrimdışı"}
             </Text>
@@ -257,34 +267,34 @@ export default function CommunicationScreen() {
                 navigation.navigate("Home");
               }
             }}
-            style={styles.headerIconButton}
+            style={[styles.headerIconButton, { backgroundColor: colors.background }]}
           >
-            <Icon name="home" size={25} color="#000000" />
+            <Icon name="home" size={25} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate("BluetoothConnection")}
-            style={styles.headerIconButtonCog}
+            style={[styles.headerIconButtonCog, { backgroundColor: colors.surface }]}
           >
-            <Icon name="cog" size={25} color="#000000" />
+            <Icon name="cog" size={25} color={colors.textPrimary} />
           </TouchableOpacity>
           {connectedDevice ? (
             <TouchableOpacity
               onPress={disconnectDevice}
-              style={styles.headerIconButtonBluetoothOff}
+              style={[styles.headerIconButtonBluetoothOff, { backgroundColor: colors.surface }]}
             >
-              <Icon name="bluetooth-off" size={25} color="#FF0000" />
+              <Icon name="bluetooth-off" size={25} color={colors.danger} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
               onPress={() => navigation.navigate("BluetoothConnection")}
-              style={styles.headerIconButtonBluetoothConnect}
+              style={[styles.headerIconButtonBluetoothConnect, { backgroundColor: colors.surface }]}
             >
-              <Icon name="bluetooth-connect" size={25} color="#10B981" />
+              <Icon name="bluetooth-connect" size={25} color={colors.success} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
             onPress={clearMessages}
-            style={styles.headerIconButtonTrash}
+            style={[styles.headerIconButtonTrash, { backgroundColor: colors.danger }]}
           >
             <Icon name="trash-can" size={25} color="#FFFFFF" />
           </TouchableOpacity>
@@ -296,17 +306,26 @@ export default function CommunicationScreen() {
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id.toString()}
-        style={styles.messagesList}
+        style={[styles.messagesList, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.messagesContent}
       />
 
-      <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 8 }]}>
-        <View style={styles.inputWrapper}>
+      <View
+        style={[
+          styles.inputContainer,
+          {
+            paddingBottom: insets.bottom + 8,
+            backgroundColor: colors.surface,
+            borderTopColor: colors.border,
+          },
+        ]}
+      >
+        <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground }]}>
           <TextInput
             ref={inputRef}
-            style={styles.input}
+            style={[styles.input, { color: colors.textPrimary }]}
             placeholder="Mesaj yazın..."
-            placeholderTextColor="#54656F"
+            placeholderTextColor={colors.textMuted}
             value={inputText}
             onChangeText={setInputText}
             multiline={false}
@@ -320,12 +339,10 @@ export default function CommunicationScreen() {
           />
           <TouchableOpacity
             style={
-              !inputText.trim() || !connectedDevice
-                ? styles.sendButtonDisabled
-                : styles.sendButton
+              !inputText.trim() ? styles.sendButtonDisabled : styles.sendButton
             }
             onPress={sendMessage}
-            disabled={!inputText.trim() || !connectedDevice}
+            disabled={!inputText.trim()}
           >
             <Icon name="send" size={26} color="#FFFFFF" />
           </TouchableOpacity>

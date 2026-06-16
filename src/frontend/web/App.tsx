@@ -1,17 +1,34 @@
 import React from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "./HomeScreen";
 import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
 import CommunicationScreen from "./CommunicationScreen";
 import { type RootStackParamList } from "./constants";
+import { useThemeColors, useEffectiveTheme } from "./theme";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
+  const colors = useThemeColors();
+  const effective = useEffectiveTheme();
+  const base = effective === "dark" ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...base,
+    colors: {
+      ...base.colors,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.border,
+      primary: colors.primary,
+      notification: colors.danger,
+    },
+  };
   return (
     <NavigationContainer
+      theme={navTheme}
       documentTitle={{
         formatter: (_, route) => {
           const titles: Record<string, string> = {

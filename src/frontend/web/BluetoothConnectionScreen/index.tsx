@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -13,8 +13,12 @@ import { useNavigation } from "@react-navigation/native";
 import type { AppNavigationProp } from "../constants";
 import { useBluetoothStore } from "../constants";
 import { useBluetooth } from "../BluetoothContext";
+import { useThemeColors, useEffectiveTheme } from "../theme";
 
 export default function BluetoothConnectionScreen() {
+  const colors = useThemeColors();
+  const effective = useEffectiveTheme();
+
   // Bluetooth motoruna SADECE bu hook üzerinden erişilir (native import yok).
   const bt = useBluetooth();
 
@@ -31,17 +35,15 @@ export default function BluetoothConnectionScreen() {
 
   const [isConnecting, setIsConnecting] = useState(false);
 
-  useEffect(() => {
-    bt.isEnabled().then((ok) => {
-      if (!ok && typeof window !== "undefined") {
+  const selectAndConnect = async () => {
+    if (!(await bt.isEnabled())) {
+      if (typeof window !== "undefined") {
         window.alert(
           "Hata: Tarayıcınız Web Serial API desteklemiyor. Chrome veya Edge kullanın."
         );
       }
-    });
-  }, [bt]);
-
-  const selectAndConnect = async () => {
+      return;
+    }
     try {
       setIsConnecting(true);
       const connected = await bt.connect();
@@ -49,7 +51,7 @@ export default function BluetoothConnectionScreen() {
       setDeviceName(connected.name);
       setMessages([]);
     } catch (e) {
-      // Kullanıcı port seçmeyi iptal ettiyse sessiz geç.
+      // Kullanıcı port seçmeyi iptal ettiyse veya bağlantı kurulamadıysa sessiz geç.
     } finally {
       setIsConnecting(false);
     }
@@ -69,14 +71,20 @@ export default function BluetoothConnectionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top", "left", "right", "bottom"]}
+    >
+      <StatusBar
+        barStyle={effective === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
+      />
 
       <View style={styles.headerWithBack}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="arrow-left" size={26} color="#1E293B" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.surface }]}>
+          <Icon name="arrow-left" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bluetooth Yönetimi</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Bluetooth Yönetimi</Text>
         <TouchableOpacity
           onPress={() => {
             const idx = navigation.getState()?.index ?? 0;
@@ -86,22 +94,22 @@ export default function BluetoothConnectionScreen() {
               navigation.navigate("Home");
             }
           }}
-          style={styles.homeBtn}
+          style={[styles.homeBtn, { backgroundColor: colors.surface }]}
         >
-          <Icon name="home" size={24} color="#1E293B" />
+          <Icon name="home" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.infoCard}>
+      <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
         <View style={styles.infoRow}>
           <Icon
             name="bluetooth"
             size={32}
-            color={isConnecting ? "#F59E0B" : connectedDevice ? "#10B981" : "#EF4444"}
+            color={isConnecting ? colors.warning : connectedDevice ? colors.success : colors.danger}
           />
           <View style={{ flex: 1 }}>
             <View style={styles.statusLabelRow}>
-              <Text style={styles.label}>BAĞLANTI DURUMU</Text>
+              <Text style={[styles.label, { color: colors.textMuted }]}>BAĞLANTI DURUMU</Text>
               {isConnecting ? (
                 <View style={styles.connectingBadge}>
                   <ActivityIndicator
@@ -123,7 +131,7 @@ export default function BluetoothConnectionScreen() {
                 </View>
               )}
             </View>
-            <Text style={styles.infoText}>
+            <Text style={[styles.infoText, { color: colors.textPrimary }]}>
               {isConnecting
                 ? "Lütfen bekleyin..."
                 : connectedDevice
@@ -133,11 +141,14 @@ export default function BluetoothConnectionScreen() {
           </View>
         </View>
         <TouchableOpacity
-          style={styles.scanBtn}
+          style={[styles.scanBtn, { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }]}
           onPress={selectAndConnect}
           disabled={isConnecting}
         >
-          <Text style={styles.scanBtnText}>Cihaz Seç ve Bağlan</Text>
+          {isConnecting && <ActivityIndicator size="small" color="#fff" />}
+          <Text style={styles.scanBtnText}>
+            {isConnecting ? "Bağlanıyor..." : "Cihaz Seç ve Bağlan"}
+          </Text>
         </TouchableOpacity>
         {connectedDevice && !isConnecting && (
           <TouchableOpacity style={styles.disconnectBtn} onPress={disconnectDevice}>
