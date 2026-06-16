@@ -3,7 +3,6 @@ import {
   PanResponder,
   View,
   useWindowDimensions,
-  PermissionsAndroid,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -17,73 +16,80 @@ import {
 } from "react-native";
 import { useState, useRef, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import RNBluetoothClassic from "react-native-bluetooth-classic";
-import { startBleScan, connectToNusDevice, stopBleScan, ensureBluetoothOn, bleManager, NUS_SERVICE } from "../bleAdapter";
-import { 
-  useSafeAreaInsets, 
+import {
+  useSafeAreaInsets,
   SafeAreaView,
-  SafeAreaProvider
+  SafeAreaProvider,
 } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import styles from './styles';
+import styles from "./styles";
 import { useNavigation } from "@react-navigation/native";
-import { 
+import {
   AppNavigationProp,
   useBluetoothStore,
-  BluetoothDevice
+  ScannedDevice,
 } from "../constants";
+import { useBluetooth } from "../BluetoothContext";
 
 export default function BluetoothConnectionScreen() {
+  // Bluetooth motoruna SADECE bu hook üzerinden erişilir (native import yok).
+  const bt = useBluetooth();
 
   const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
   const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
-  const messages = useBluetoothStore((state) => state.messages);
   const setMessages = useBluetoothStore((state) => state.setMessages);
-  const manuallyDisconnected = useBluetoothStore((state) => state.manuallyDisconnected);
-  const setManuallyDisconnected = useBluetoothStore((state) => state.setManuallyDisconnected);
+  const setManuallyDisconnected = useBluetoothStore(
+    (state) => state.setManuallyDisconnected
+  );
 
   const navigation = useNavigation<AppNavigationProp>();
 
   const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = useWindowDimensions();
-  const isLandscape = SCREEN_WIDTH > SCREEN_HEIGHT;
   const insets = useSafeAreaInsets();
 
   const SNAP_FULL = 0;
-  const SNAP_PARTIAL = SCREEN_HEIGHT * 0.35; 
   const SNAP_CLOSED = SCREEN_HEIGHT;
 
-  const [devices, setDevices] = useState<any[]>([]);
+  const [devices, setDevices] = useState<ScannedDevice[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [lastConnectedDevice, setLastConnectedDevice] = useState<any | null>(null);
+  const [lastConnectedDevice, setLastConnectedDevice] =
+    useState<ScannedDevice | null>(null);
 
   const panY = useRef(new Animated.Value(SNAP_CLOSED)).current;
   const currentSnapPoint = useRef(SNAP_CLOSED);
-  const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadLastConnectedDevice();
-    return () => stopBleScan();
+    return () => bt.stopScan();
   }, []);
 
   const loadLastConnectedDevice = async () => {
     try {
-      const lastDeviceJson = await AsyncStorage.getItem('lastConnectedDevice');
+      const lastDeviceJson = await AsyncStorage.getItem("lastConnectedDevice");
       if (lastDeviceJson) {
-        const lastDevice = JSON.parse(lastDeviceJson);
-        setLastConnectedDevice(lastDevice);
+        setLastConnectedDevice(JSON.parse(lastDeviceJson));
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   };
 
-  const saveLastConnectedDevice = async (device: BluetoothDevice) => {
+  const saveLastConnectedDevice = async (device: ScannedDevice) => {
     try {
-      await AsyncStorage.setItem('lastConnectedDevice', JSON.stringify(device));
-      setLastConnectedDevice(device);
-    } catch (error) {
-    }
+      // Yalnızca serileştirilebilir tanımlayıcıyı sakla (fonksiyonlar değil).
+      const descriptor: ScannedDevice = {
+        id: device.id,
+        address: device.address,
+        name: device.name,
+        bonded: device.bonded,
+        kind: device.kind,
+      };
+      await AsyncStorage.setItem(
+        "lastConnectedDevice",
+        JSON.stringify(descriptor)
+      );
+      setLastConnectedDevice(descriptor);
+    } catch (error) {}
   };
 
   const panResponder = useRef(
@@ -99,7 +105,7 @@ export default function BluetoothConnectionScreen() {
 
         if (velocity > 0.5 || movedY > SCREEN_HEIGHT * 0.3) closeModal();
         else animateToPoint(SNAP_FULL);
-      }
+      },
     })
   ).current;
 
@@ -108,58 +114,35 @@ export default function BluetoothConnectionScreen() {
       toValue: point,
       useNativeDriver: true,
       tension: 50,
-      friction: 10
-    }).start(() => currentSnapPoint.current = point);
+      friction: 10,
+    }).start(() => (currentSnapPoint.current = point));
   };
 
   const closeModal = () => {
     Animated.timing(panY, {
       toValue: SNAP_CLOSED,
       duration: 250,
-      useNativeDriver: true
+      useNativeDriver: true,
     }).start(() => {
       setModalVisible(false);
       currentSnapPoint.current = SNAP_CLOSED;
     });
-    try { RNBluetoothClassic.cancelDiscovery(); } catch (e) {}
-  };
-
-  const requestBlePermissions = async (): Promise<boolean> => {
-    const result = await PermissionsAndroid.requestMultiple([
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-    ]);
-    return (
-      result[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === "granted" &&
-      result[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === "granted"
-    );
-  };
-
-  const stopScan = () => {
-    if (scanTimeoutRef.current) {
-      clearTimeout(scanTimeoutRef.current);
-      scanTimeoutRef.current = null;
-    }
-    try { stopBleScan(); } catch (e) {}
-    setScanning(false);
-  };
-
-  const ensureBluetoothOnLocal = async (): Promise<boolean> => {
-    return await ensureBluetoothOn();
+    bt.stopScan();
   };
 
   const openBluetoothModal = async () => {
-
-    // Request permissions for BLE
-    const permitted = await requestBlePermissions();
-    if (!permitted) {
-      Alert.alert('Permissions Required', 'Bluetooth permissions are required to scan and connect to devices.');
+    // İzinler
+    if (!(await bt.requestPermissions())) {
+      Alert.alert(
+        "İzin Gerekli",
+        "Cihazları taramak ve bağlanmak için Bluetooth izinleri gerekli."
+      );
       return;
     }
 
-    // Ensure BLE powered on
-    if (!(await ensureBluetoothOnLocal())) {
-      Alert.alert('Hata', 'Bu ayara girilebilmesi için Bluetooth açık olmalıdır!');
+    // Bluetooth açık mı?
+    if (!(await bt.ensureEnabled())) {
+      Alert.alert("Hata", "Bu ayara girilebilmesi için Bluetooth açık olmalıdır!");
       return;
     }
 
@@ -169,110 +152,32 @@ export default function BluetoothConnectionScreen() {
     setDevices([]);
     setScanning(true);
 
-    // Classic discovery (keep existing behavior)
-    try {
-      await RNBluetoothClassic.cancelDiscovery();
-    } catch (e) {}
-    const bonded = await RNBluetoothClassic.getBondedDevices();
-    setDevices(bonded.map((d: any) => ({ ...d, bonded: true })));
-
-    try {
-      const discovered = await RNBluetoothClassic.startDiscovery();
-      const map = new Map();
-      [...bonded, ...discovered].forEach(d => map.set(d.address, { 
-        ...d, bonded: bonded.some(b => b.address === d.address) 
-      }));
-      setDevices(Array.from(map.values()));
-    } catch (e) {
-      // ignore classic discovery errors
-    }
-
-    // Start BLE scan for NUS devices and add progressively
-    const found = new Map<string, any>();
-    try {
-      (bleManager as any).startDeviceScan([NUS_SERVICE], null, (error: any, device: any) => {
-        if (error) {
-          stopScan();
-          Alert.alert('Hata', 'Cihazlar taranamadı.');
-          return;
-        }
-        if (device && !found.has(device.id)) {
-          found.set(device.id, { id: device.id, name: device.name || device.localName });
-          // Merge into devices list using BLE: prefix for address to avoid collision
-          setDevices(prev => {
-            const map = new Map(prev.map((d: any) => [d.address, d]));
-            const bleAddr = `BLE:${device.id}`;
-            if (!map.has(bleAddr)) map.set(bleAddr, { id: device.id, address: bleAddr, name: device.name || device.localName, bonded: false });
-            return Array.from(map.values());
-          });
-        }
-      });
-
-      // stop after 10s
-      scanTimeoutRef.current = setTimeout(stopScan, 10000);
-    } catch (e) {
-      setScanning(false);
-    }
+    // İlerlemeli tarama: her yeni cihaz geldikçe listeye eklenir.
+    bt.startScan({
+      onDevice: (device) => {
+        setDevices((prev) => {
+          if (prev.some((d) => d.address === device.address)) return prev;
+          return [...prev, device];
+        });
+      },
+      onError: () => {
+        setScanning(false);
+        Alert.alert("Hata", "Cihazlar taranamadı.");
+      },
+      onComplete: () => setScanning(false),
+    });
   };
 
-  const connectToDevice = async (device: BluetoothDevice) => {
-    // BLE devices have address starting with 'BLE:'
-    const isBle = device.address?.toString().startsWith("BLE:");
-    try {
-      if (!isBle) {
-        await RNBluetoothClassic.requestBluetoothEnabled();
-      }
-    } 
-    catch (error) {
-      Alert.alert('Hata', 'Bu cihaza bağlanabilmesi için Bluetooth açık olmalıdır!');
-      return;
-    }
+  const connectToDevice = async (device: ScannedDevice) => {
     try {
       closeModal();
       setIsConnecting(true);
-      if (isBle) {
-        // BLE path: device.id is the original BLE id
-        const deviceId = device.id;
-        const connected = await connectToNusDevice(deviceId);
-        setConnectedDevice(connected);
-        if (connected) {
-          setMessages([]);
-          saveLastConnectedDevice({ ...device, address: device.address });
-        }
-      } else {
-        const classicConnected = await RNBluetoothClassic.connectToDevice(device.address, {
-          connectorType: "rfcomm",
-          connectionType: "binary",
-          delimiter: "\n",
-          encoding: "utf-8",
-        });
-        const wrapped = {
-          id: classicConnected?.id || device.address,
-          address: classicConnected?.address || device.address,
-          name: classicConnected?.name || device.name,
-          write: async (data: string) => {
-            await classicConnected?.write(data);
-          },
-          disconnect: async () => {
-            await classicConnected?.disconnect();
-          },
-          onDataReceived: (listener: any) => {
-                    const sub = (RNBluetoothClassic as any).onDataReceived((event: any) => {
-              const b64 = Buffer.from(event.data, "utf-8").toString("base64");
-              listener({ data: b64 });
-            });
-            return { remove: () => sub.remove() };
-          },
-        };
-        setConnectedDevice(wrapped);
-        if (classicConnected) {
-          setMessages([]);
-          saveLastConnectedDevice(wrapped);
-        }
-      }
+      const connected = await bt.connect(device);
+      setConnectedDevice(connected);
+      setMessages([]);
+      saveLastConnectedDevice(device);
       setIsConnecting(false);
-    }
-    catch (e) {
+    } catch (e) {
       setIsConnecting(false);
       Alert.alert("Hata", "Bağlantı kurulamadı.");
     }
@@ -280,35 +185,31 @@ export default function BluetoothConnectionScreen() {
 
   const disconnectDevice = async () => {
     if (connectedDevice) {
-      Alert.alert(
-        "Bağlantıyı Kes",
-        "Bağlantı kesilecek. Emin misiniz?",
-        [
-          {
-            text: "Vazgeç",
-            style: "cancel",
+      Alert.alert("Bağlantıyı Kes", "Bağlantı kesilecek. Emin misiniz?", [
+        { text: "Vazgeç", style: "cancel" },
+        {
+          text: "Kes",
+          style: "destructive",
+          onPress: async () => {
+            setManuallyDisconnected(true);
+            await connectedDevice.disconnect();
+            setConnectedDevice(null);
+            setMessages([]);
+            ToastAndroid.show("Bağlantı kesildi", ToastAndroid.SHORT);
           },
-          {
-            text: "Kes",
-            style: "destructive",
-            onPress: async () => {
-              setManuallyDisconnected(true);
-              await connectedDevice.disconnect();
-              setConnectedDevice(null);
-              setMessages([]);
-              ToastAndroid.show("Bağlantı kesildi", ToastAndroid.SHORT);
-            },
-          },
-        ]
-      );
+        },
+      ]);
     }
   };
 
-  const renderDevice = ({ item }: { item: BluetoothDevice }) => {
-
+  const renderDevice = ({ item }: { item: ScannedDevice }) => {
     const isConnected = connectedDevice?.address === item.address;
-    const isPaired = (item as any).bonded;
-    const cardStyle = isConnected ? styles.connectedCard : isPaired ? styles.pairedCard : styles.newCard;
+    const isPaired = item.bonded;
+    const cardStyle = isConnected
+      ? styles.connectedCard
+      : isPaired
+      ? styles.pairedCard
+      : styles.newCard;
     const iconColor = isConnected ? "#fff" : isPaired ? "#0284C7" : "#64748B";
 
     return (
@@ -316,25 +217,53 @@ export default function BluetoothConnectionScreen() {
         style={({ pressed }) => [
           styles.deviceListItem,
           cardStyle,
-          pressed && styles.deviceListItemPressed
+          pressed && styles.deviceListItemPressed,
         ]}
-        onPress={() => isConnected ? disconnectDevice() : connectToDevice(item)}
+        onPress={() => (isConnected ? disconnectDevice() : connectToDevice(item))}
       >
         <View style={[styles.listIconCircle, isConnected && styles.connectedIconCircle]}>
-          <Icon name={isConnected ? "bluetooth-connect" : "bluetooth"} size={22} color={iconColor} />
+          <Icon
+            name={isConnected ? "bluetooth-connect" : "bluetooth"}
+            size={22}
+            color={iconColor}
+          />
         </View>
         <View style={styles.listTextSection}>
-          <Text style={styles.deviceName} numberOfLines={1}>{item.name || "Bilinmeyen Cihaz"}</Text>
+          <Text style={styles.deviceName} numberOfLines={1}>
+            {item.name || "Bilinmeyen Cihaz"}
+          </Text>
           <Text style={styles.deviceAddress}>{item.address}</Text>
           <View style={styles.badgeRow}>
-            <View style={[styles.statusBadge, isConnected ? styles.connectedBadge : isPaired ? styles.pairedBadge : styles.newBadge]}>
-               <Text style={[styles.statusBadgeText, isConnected ? styles.connectedBadgeText : isPaired ? styles.pairedBadgeText : styles.newBadgeText]}>
-                 {isConnected ? "BAĞLI" : isPaired ? "EŞLEŞMİŞ" : "YENİ CİHAZ"}
-               </Text>
+            <View
+              style={[
+                styles.statusBadge,
+                isConnected
+                  ? styles.connectedBadge
+                  : isPaired
+                  ? styles.pairedBadge
+                  : styles.newBadge,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusBadgeText,
+                  isConnected
+                    ? styles.connectedBadgeText
+                    : isPaired
+                    ? styles.pairedBadgeText
+                    : styles.newBadgeText,
+                ]}
+              >
+                {isConnected ? "BAĞLI" : isPaired ? "EŞLEŞMİŞ" : "YENİ CİHAZ"}
+              </Text>
             </View>
           </View>
         </View>
-        <Icon name={isConnected ? "link-off" : "chevron-right"} size={24} color={isConnected ? "#EF4444" : isPaired ? "#7DD3FC" : "#CBD5E1"} />
+        <Icon
+          name={isConnected ? "link-off" : "chevron-right"}
+          size={24}
+          color={isConnected ? "#EF4444" : isPaired ? "#7DD3FC" : "#CBD5E1"}
+        />
       </Pressable>
     );
   };
@@ -342,31 +271,40 @@ export default function BluetoothConnectionScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-      
+
       <View style={styles.headerWithBack}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Icon name="arrow-left" size={26} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Bluetooth Yönetimi</Text>
-        <TouchableOpacity onPress={() => navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        })} style={styles.homeBtn}>
+        <TouchableOpacity
+          onPress={() =>
+            navigation.reset({ index: 0, routes: [{ name: "Home" }] })
+          }
+          style={styles.homeBtn}
+        >
           <Icon name="home" size={24} color="#1E293B" />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
-            <Icon name="bluetooth" size={32} color={isConnecting ? "#F59E0B" : connectedDevice ? "#10B981" : "#EF4444"} />
+            <Icon
+              name="bluetooth"
+              size={32}
+              color={isConnecting ? "#F59E0B" : connectedDevice ? "#10B981" : "#EF4444"}
+            />
             <View style={{ flex: 1 }}>
               <View style={styles.statusLabelRow}>
                 <Text style={styles.label}>BAĞLANTI DURUMU</Text>
                 {isConnecting ? (
                   <View style={styles.connectingBadge}>
-                    <ActivityIndicator size="small" color="#F59E0B" style={styles.smallSpinner} />
+                    <ActivityIndicator
+                      size="small"
+                      color="#F59E0B"
+                      style={styles.smallSpinner}
+                    />
                     <Text style={styles.connectingText}>Bağlanıyor...</Text>
                   </View>
                 ) : connectedDevice ? (
@@ -381,10 +319,20 @@ export default function BluetoothConnectionScreen() {
                   </View>
                 )}
               </View>
-              <Text style={styles.infoText}>{isConnecting ? "Lütfen bekleyin..." : connectedDevice ? connectedDevice.name : "Cihaz seçilmedi"}</Text>
+              <Text style={styles.infoText}>
+                {isConnecting
+                  ? "Lütfen bekleyin..."
+                  : connectedDevice
+                  ? connectedDevice.name
+                  : "Cihaz seçilmedi"}
+              </Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.scanBtn} onPress={openBluetoothModal} disabled={isConnecting}>
+          <TouchableOpacity
+            style={styles.scanBtn}
+            onPress={openBluetoothModal}
+            disabled={isConnecting}
+          >
             <Text style={styles.scanBtnText}>Cihaz Ara ve Bağlan</Text>
           </TouchableOpacity>
           {connectedDevice && !isConnecting && (
@@ -395,7 +343,10 @@ export default function BluetoothConnectionScreen() {
         </View>
 
         {connectedDevice && !isConnecting && (
-          <TouchableOpacity style={styles.communicationBtn} onPress={() => navigation.navigate('Communication')}>
+          <TouchableOpacity
+            style={styles.communicationBtn}
+            onPress={() => navigation.navigate("Communication")}
+          >
             <View style={styles.communicationBtnContent}>
               <Icon name="swap-horizontal" size={28} color="#fff" />
               <Text style={styles.communicationBtnText}>İletişim Ekranına Git</Text>
@@ -414,8 +365,12 @@ export default function BluetoothConnectionScreen() {
             </View>
             <View style={styles.lastDeviceTextSection}>
               <Text style={styles.lastDeviceLabel}>Son Bağlanan Cihaz</Text>
-              <Text style={styles.lastDeviceName}>{lastConnectedDevice.name || "Bilinmeyen Cihaz"}</Text>
-              <Text style={styles.lastDeviceAddress}>{lastConnectedDevice.address}</Text>
+              <Text style={styles.lastDeviceName}>
+                {lastConnectedDevice.name || "Bilinmeyen Cihaz"}
+              </Text>
+              <Text style={styles.lastDeviceAddress}>
+                {lastConnectedDevice.address}
+              </Text>
             </View>
             {isConnecting ? (
               <ActivityIndicator size="small" color="#0284C7" />
@@ -426,47 +381,67 @@ export default function BluetoothConnectionScreen() {
         )}
       </ScrollView>
 
-      <Modal visible={modalVisible} transparent animationType="none" statusBarTranslucent onRequestClose={closeModal}>
-          <SafeAreaProvider>
-            <View style={styles.modalOverlay}>
-              <Animated.View style={[styles.modalBox, { height: SCREEN_HEIGHT, transform: [{ translateY: panY }] }]}>
-                <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
-                  <View {...panResponder.panHandlers} style={styles.interactiveHeader}>
-                    <View style={styles.dragHandle} />
-                    <View style={styles.modalHeaderContent}>
-                      <View style={styles.titleWrapper}>
-                        <View style={styles.titleIconCircle}>
-                          <Icon name="bluetooth" size={20} color="#0984e3" />
-                        </View>
-                        <Text style={styles.modalTitle}>Bluetooth Cihazları</Text>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={closeModal}
+      >
+        <SafeAreaProvider>
+          <View style={styles.modalOverlay}>
+            <Animated.View
+              style={[
+                styles.modalBox,
+                { height: SCREEN_HEIGHT, transform: [{ translateY: panY }] },
+              ]}
+            >
+              <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
+                <View {...panResponder.panHandlers} style={styles.interactiveHeader}>
+                  <View style={styles.dragHandle} />
+                  <View style={styles.modalHeaderContent}>
+                    <View style={styles.titleWrapper}>
+                      <View style={styles.titleIconCircle}>
+                        <Icon name="bluetooth" size={20} color="#0984e3" />
                       </View>
-                      <TouchableOpacity onPress={closeModal} style={styles.closeCircle}>
-                        <Icon name="close" size={20} color="#64748B" />
-                      </TouchableOpacity>
+                      <Text style={styles.modalTitle}>Bluetooth Cihazları</Text>
                     </View>
+                    <TouchableOpacity onPress={closeModal} style={styles.closeCircle}>
+                      <Icon name="close" size={20} color="#64748B" />
+                    </TouchableOpacity>
                   </View>
+                </View>
 
-                  {scanning && (
-                    <View style={styles.scanningIndicator}>
-                      <ActivityIndicator size="small" color="#0984e3" />
-                      <Text style={styles.scanningIndicatorText}>Yakındaki cihazlar taranıyor...</Text>
-                    </View>
-                  )}
+                {scanning && (
+                  <View style={styles.scanningIndicator}>
+                    <ActivityIndicator size="small" color="#0984e3" />
+                    <Text style={styles.scanningIndicatorText}>
+                      Yakındaki cihazlar taranıyor...
+                    </Text>
+                  </View>
+                )}
 
-                  <FlatList
-                    data={devices}
-                    keyExtractor={(item) => item.address}
-                    renderItem={renderDevice}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={[styles.listContentStyle, { paddingBottom: insets.bottom + 35, paddingTop: insets.top - 35 }]}
-                    ItemSeparatorComponent={() => <View style={styles.separator} />}
-                    ListEmptyComponent={!scanning ? <Text style={styles.emptyStateText}>Cihaz bulunamadı</Text> : null}
-                  />
-                </SafeAreaView>
-              </Animated.View>
-            </View>
-          </SafeAreaProvider>
+                <FlatList
+                  data={devices}
+                  keyExtractor={(item) => item.address}
+                  renderItem={renderDevice}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={[
+                    styles.listContentStyle,
+                    { paddingBottom: insets.bottom + 35, paddingTop: insets.top - 35 },
+                  ]}
+                  ItemSeparatorComponent={() => <View style={styles.separator} />}
+                  ListEmptyComponent={
+                    !scanning ? (
+                      <Text style={styles.emptyStateText}>Cihaz bulunamadı</Text>
+                    ) : null
+                  }
+                />
+              </SafeAreaView>
+            </Animated.View>
+          </View>
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );
-};
+}

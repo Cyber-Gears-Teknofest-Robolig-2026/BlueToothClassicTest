@@ -43,38 +43,6 @@ const CommunicationButton = () => {
   );
 }
 
-const CarControlButton = () => {
-  const navigation = useNavigation<AppNavigationProp>();
-  return (
-    <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => navigation.navigate('CarControl')}>
-      <View style={[styles.menuIconCircle, { backgroundColor: "#FDE68A" }]}>
-        <MaterialCommunityIcons name="car" size={30} color="#854D0E" />
-      </View>
-      <View style={styles.menuTextContent}>
-        <Text style={styles.menuTitle}>Araç Kontrol</Text>
-        <Text style={styles.menuDesc}>Bağlı cihaz ile araç kontrolü yap</Text>
-      </View>
-      <MaterialCommunityIcons name="chevron-right" size={24} color="#CBD5E1" />
-    </TouchableOpacity>
-  );
-}
-
-const SettingsButton = () => {
-  const navigation = useNavigation<AppNavigationProp>();
-  return (
-    <TouchableOpacity activeOpacity={0.8} style={styles.menuCard} onPress={() => navigation.navigate('Settings')}>
-      <View style={[styles.menuIconCircle, { backgroundColor: "#EDE9FE" }]}>
-        <MaterialCommunityIcons name="cog" size={30} color="#6D28D9" />
-      </View>
-      <View style={styles.menuTextContent}>
-        <Text style={styles.menuTitle}>Ayarlar</Text>
-        <Text style={styles.menuDesc}>Gönderim başlıkları ve varsayılan değerleri düzenle</Text>
-      </View>
-      <MaterialCommunityIcons name="chevron-right" size={24} color="#CBD5E1" />
-    </TouchableOpacity>
-  );
-}
-
 export default function HomeScreen() {
 
   return (
@@ -94,9 +62,7 @@ export default function HomeScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <BluetoothConnectionButton />
-        <CarControlButton />
         <CommunicationButton />
-        <SettingsButton />
       </ScrollView>
 
     </SafeAreaView>

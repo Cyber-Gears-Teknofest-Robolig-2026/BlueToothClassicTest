@@ -1,17 +1,10 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Buffer } from "buffer";
 import { create } from "zustand";
+import type { ConnectedDevice, ScannedDevice } from "./BluetoothContext";
 
-export type BluetoothDevice = {
-  id: string;
-  address: string; // ekran uyumluluğu için id'nin takma adı
-  name: string;
-  write: (data: string) => Promise<void>;
-  disconnect: () => Promise<void>;
-  onDataReceived: (
-    listener: (event: { data: string }) => void
-  ) => { remove: () => void };
-};
+// Backend sözleşmesindeki cihaz tiplerini ekranlara yeniden açıyoruz; ekranlar
+// native kütüphaneleri değil yalnızca bu tipleri tanır.
+export type { ConnectedDevice, ScannedDevice };
 
 export type RootStackParamList = {
   Home: undefined;
@@ -21,7 +14,7 @@ export type RootStackParamList = {
 
 export type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-interface Message {
+export interface Message {
   id: number;
   text: string;
   mode: "sent" | "received";
@@ -29,8 +22,9 @@ interface Message {
 }
 
 type BluetoothStore = {
-  connectedDevice: BluetoothDevice | null;
-  setConnectedDevice: (device: BluetoothDevice | null) => void;
+  /** Aktif bağlantı (backend'ten gelen ConnectedDevice) — UI durumu olarak tutulur. */
+  connectedDevice: ConnectedDevice | null;
+  setConnectedDevice: (device: ConnectedDevice | null) => void;
   messages: Message[];
   setMessages: (messages: Message[]) => void;
   manuallyDisconnected: boolean;
@@ -43,5 +37,6 @@ export const useBluetoothStore = create<BluetoothStore>((set) => ({
   messages: [],
   setMessages: (messages: Message[]) => set({ messages }),
   manuallyDisconnected: false,
-  setManuallyDisconnected: (manuallyDisconnected: boolean) => set({ manuallyDisconnected }),
+  setManuallyDisconnected: (manuallyDisconnected: boolean) =>
+    set({ manuallyDisconnected }),
 }));

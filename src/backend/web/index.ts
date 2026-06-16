@@ -11,7 +11,7 @@ import type {
   ScanHandlers,
   ScannedDevice,
   Subscription,
-} from "../types";
+} from "..";
 
 const NOOP_SUBSCRIPTION: Subscription = { remove: () => {} };
 
@@ -52,10 +52,11 @@ const wrapPort = (port: any): ConnectedDevice => {
       const decoder = new TextDecoder();
       (async () => {
         if (!port.readable) return;
-        reader = port.readable.getReader();
+        const localReader = port.readable.getReader();
+        reader = localReader;
         try {
           while (reading) {
-            const { value, done } = await reader.read();
+            const { value, done } = await localReader.read();
             if (done) break;
             if (value) {
               const text = decoder.decode(value).trim();

@@ -15,7 +15,7 @@ import type {
   ScanHandlers,
   ScannedDevice,
   Subscription,
-} from "../types";
+} from "..";
 
 /** Classic bağlantı seçenekleri (RFCOMM / satır sonu sınırlayıcılı metin). */
 const CONNECTION_OPTIONS = {

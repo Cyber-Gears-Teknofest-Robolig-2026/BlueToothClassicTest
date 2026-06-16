@@ -14,12 +14,8 @@ import {
   useSafeAreaInsets,
   SafeAreaView,
 } from "react-native-safe-area-context";
-import { Buffer } from "buffer";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import {
-  KeyboardAvoidingView,
-  KeyboardStickyView,
-} from "react-native-keyboard-controller";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import styles from "./styles";
 import { useNavigation } from "@react-navigation/native";
 import {
@@ -102,17 +98,8 @@ export default function CommunicationScreen() {
   useEffect(() => {
     if (connectedDevice) {
       readSubscriptionRef.current = connectedDevice?.onDataReceived((event) => {
-        let receivedData = "";
-        try {
-          // If event.data looks like base64, decode; otherwise treat as raw string
-          if (/^[A-Za-z0-9+\/=\s]+$/.test(event.data)) {
-            receivedData = Buffer.from(event.data, "base64").toString("utf-8").trim();
-          } else {
-            receivedData = (event.data || "").toString().trim();
-          }
-        } catch (err) {
-          receivedData = (event.data || "").toString().trim();
-        }
+        // Backend çözülmüş (decoded) metin yollar; burada ek kod çözme gerekmez.
+        const receivedData = (event.data || "").toString().trim();
 
         if (!receivedData) return;
 

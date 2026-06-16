@@ -1,57 +1,41 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Alert } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import RNBluetoothClassic, {
-  BluetoothDevice,
-} from "react-native-bluetooth-classic";
 import {
   NavigationContainer,
-  useNavigation,
-  DarkTheme,
-  DefaultTheme,
 } from "@react-navigation/native";
-import {
-  createNativeStackNavigator,
-  NativeStackNavigationProp,
-} from "@react-navigation/native-stack";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { create } from "zustand";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "./HomeScreen";
 import BluetoothConnectionScreen from "./BluetoothConnectionScreen";
 import CommunicationScreen from "./CommunicationScreen";
-import {
-  RootStackParamList,
-  AppNavigationProp,
-  useBluetoothStore,
-} from "./constants";
+import { RootStackParamList, useBluetoothStore } from "./constants";
+import { useBluetooth } from "./BluetoothContext";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
-
-  const connectedDevice = useBluetoothStore((state) => state.connectedDevice);
+  const bt = useBluetooth();
   const setConnectedDevice = useBluetoothStore((state) => state.setConnectedDevice);
-  const manuallyDisconnected = useBluetoothStore((state) => state.manuallyDisconnected);
-  const setManuallyDisconnected = useBluetoothStore((state) => state.setManuallyDisconnected);
+  const setManuallyDisconnected = useBluetoothStore(
+    (state) => state.setManuallyDisconnected
+  );
 
+  // Bluetooth donanımı kapatıldığında bağlantıyı temizle.
   useEffect(() => {
-    const bluetoothDisabledSubscription = RNBluetoothClassic.onBluetoothDisabled(async () => {
-      Alert.alert(
-        "Hata",
-        "Bluetooth kapalı!"
-      );
-      await connectedDevice?.disconnect();
+    const sub = bt.onBluetoothDisabled(async () => {
+      Alert.alert("Hata", "Bluetooth kapalı!");
+      const { connectedDevice } = useBluetoothStore.getState();
+      await connectedDevice?.disconnect().catch(() => {});
       setManuallyDisconnected(false);
       setConnectedDevice(null);
     });
-    return () => {
-      bluetoothDisabledSubscription.remove();
-    };
-  }, []);
+    return () => sub.remove();
+  }, [bt]);
 
+  // Cihazla bağlantı koptuğunda (güç kesilmesi / menzil dışı) kullanıcıyı uyar.
   useEffect(() => {
-    const disconnectSubscription = RNBluetoothClassic.onDeviceDisconnected(() => {
+    const sub = bt.onDeviceDisconnected(() => {
       setConnectedDevice(null);
       const { manuallyDisconnected } = useBluetoothStore.getState();
       if (!manuallyDisconnected) {
@@ -62,40 +46,29 @@ const AppNavigator = () => {
       }
       setManuallyDisconnected(false);
     });
-    return () => disconnectSubscription.remove();
-  }, []);
+    return () => sub.remove();
+  }, [bt]);
 
   return (
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName="Home"
-        screenOptions={{
-          headerShown: false,
-        }}
-
+        screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Home">
-          {() => (
-            <HomeScreen />
-          )}
-        </Stack.Screen>
-
+        <Stack.Screen name="Home">{() => <HomeScreen />}</Stack.Screen>
         <Stack.Screen name="BluetoothConnection">
-          {() => (
-            <BluetoothConnectionScreen />
-          )}
+          {() => <BluetoothConnectionScreen />}
         </Stack.Screen>
-
         <Stack.Screen name="Communication">
-          {() => (
-            <CommunicationScreen />
-          )}
+          {() => <CommunicationScreen />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );
 };
 
+// Backend, frontend DIŞINDA (src/App.tsx) <BluetoothProvider> ile enjekte edilir.
+// Burada provider yoktur; bu sayede frontend/ klasörü backend'e bağımlı değildir.
 export default function App() {
   return (
     <KeyboardProvider>
