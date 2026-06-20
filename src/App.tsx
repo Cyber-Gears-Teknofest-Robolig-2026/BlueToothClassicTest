@@ -1,10 +1,27 @@
 import React from "react";
-import { Platform } from "react-native";
+import { LogBox, Platform } from "react-native";
 import WebApp from "@/src/frontend/web/App";
 import AndroidApp from "@/src/frontend/android/App";
 import { BluetoothProvider as WebBluetoothProvider } from "@/src/frontend/web/BluetoothContext";
 import { BluetoothProvider as AndroidBluetoothProvider } from "@/src/frontend/android/BluetoothContext";
 import type { BluetoothApi } from "@/src/backend";
+
+// @react-navigation/elements v2.x hâlâ `pointerEvents` prop'unu kullanıyor;
+// upstream güncellenene kadar warning'i bastır.
+LogBox.ignoreLogs([/props\.pointerEvents is deprecated/]);
+
+// RN Web'te LogBox console'u her zaman filtrelemiyor; web'de doğrudan console.warn
+// üzerinde de aynı pattern'i filtrele.
+if (Platform.OS === "web" && typeof console !== "undefined") {
+  const originalWarn = console.warn.bind(console);
+  console.warn = (...args: unknown[]) => {
+    const first = args[0];
+    if (typeof first === "string" && first.includes("props.pointerEvents is deprecated")) {
+      return;
+    }
+    originalWarn(...args);
+  };
+}
 
 /**
  * ENTEGRASYON KATMANI (frontend'in DIŞI)

@@ -22,6 +22,28 @@ const hasSerial = () =>
 const wrapPort = (port: any): ConnectedDevice => {
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   let reading = false;
+  // Okuma döngüsünün tamamlanmasını bekleyebilmek için promise'i saklarız.
+  let readLoop: Promise<void> | null = null;
+
+  /** Okuyucuyu iptal eder ve döngünün kilidi bırakmasını bekler. */
+  const stopReading = async () => {
+    reading = false;
+    if (reader) {
+      try {
+        await reader.cancel();
+      } catch {
+        /* yoksay */
+      }
+    }
+    if (readLoop) {
+      try {
+        await readLoop;
+      } catch {
+        /* yoksay */
+      }
+      readLoop = null;
+    }
+  };
 
   return {
     id: "serial",
@@ -36,21 +58,14 @@ const wrapPort = (port: any): ConnectedDevice => {
       }
     },
     disconnect: async () => {
-      reading = false;
-      if (reader) {
-        try {
-          await reader.cancel();
-        } catch {
-          /* yoksay */
-        }
-        reader = null;
-      }
+      // Önce okuma döngüsünü durdurup kilidi bırak, sonra portu kapat.
+      await stopReading();
       await port.close();
     },
     onDataReceived: (listener) => {
       reading = true;
       const decoder = new TextDecoder();
-      (async () => {
+      readLoop = (async () => {
         if (!port.readable) return;
         const localReader = port.readable.getReader();
         reader = localReader;
@@ -66,17 +81,15 @@ const wrapPort = (port: any): ConnectedDevice => {
         } catch {
           /* okuma iptal edildi veya bağlantı koptu */
         } finally {
+          // Kilidi bırak ki port.close() güvenle çağrılabilsin.
+          localReader.releaseLock();
           reader = null;
         }
       })();
 
       return {
         remove: () => {
-          reading = false;
-          if (reader) {
-            reader.cancel().catch(() => {});
-            reader = null;
-          }
+          void stopReading();
         },
       };
     },
