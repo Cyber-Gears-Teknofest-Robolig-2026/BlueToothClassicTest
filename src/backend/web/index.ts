@@ -40,7 +40,13 @@ const disconnectListeners = new Set<() => void>();
 let activePort: any = null;
 let activeReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 let activeReadLoop: Promise<void> | null = null;
-let reading = false;
+// Okuma döngüsünün durdurma sinyali ARTIK aboneliğe özeldir (paylaşılan tek bir
+// `reading` bayrağı değil). Böylece ekranlar arası geçişte hızlıca yeniden abone
+// olununca eski döngü, yeni döngünün portunu yanlışlıkla kapatmaz.
+let currentSub: { stopped: boolean } | null = null;
+// Süren reader serbest bırakma işlemi. Yeni abonelik getReader()'dan ÖNCE bunu
+// bekler; aksi halde stream hâlâ kilitliyken getReader() "already locked" atar.
+let releasing: Promise<void> | null = null;
 let serialDisconnectBound = false;
 
 /** Portu sessizce kapatır (zaten kapalı/kopmuş olabilir; hatayı yoksay). */
@@ -57,15 +63,22 @@ const closeQuietly = async (port: any) => {
  * kalabileceği için iptal ve döngü beklemeleri süre sınırlıdır.
  */
 const releaseReader = async () => {
-  reading = false;
-  if (activeReader) {
-    await withTimeout(Promise.resolve(activeReader.cancel()), 1500);
-  }
-  if (activeReadLoop) {
-    await withTimeout(activeReadLoop, 1500);
-  }
-  activeReader = null;
-  activeReadLoop = null;
+  if (currentSub) currentSub.stopped = true;
+  const reader = activeReader;
+  const loop = activeReadLoop;
+  // Serbest bırakmayı tek bir promise'te topla ki yeni abonelik bunu bekleyebilsin.
+  releasing = (async () => {
+    if (reader) {
+      await withTimeout(Promise.resolve(reader.cancel()), 1500);
+    }
+    if (loop) {
+      await withTimeout(loop, 1500);
+    }
+    // Yalnızca hâlâ aynı reader/loop ise temizle; yeni abonelik atadıysa dokunma.
+    if (activeReader === reader) activeReader = null;
+    if (activeReadLoop === loop) activeReadLoop = null;
+  })();
+  await releasing;
 };
 
 /** Aktif portu tamamen kapatır: okumayı durdur, kilidi bırak, portu kapat. */
@@ -95,7 +108,7 @@ const handleReadLoopEnded = async (port: any) => {
   activePort = null;
   activeReader = null;
   activeReadLoop = null;
-  reading = false;
+  if (currentSub) currentSub.stopped = true;
   await closeQuietly(port);
   fireDisconnectListeners();
 };
@@ -166,14 +179,46 @@ const wrapPort = (port: any): ConnectedDevice => ({
     await teardown(port);
   },
   onDataReceived: (listener) => {
-    reading = true;
     const decoder = new TextDecoder();
-    activeReadLoop = (async () => {
-      if (!port.readable) return;
-      const localReader = port.readable.getReader();
+    // Bu aboneliğe özel durdurma bayrağı.
+    const sub = { stopped: false };
+    currentSub = sub;
+    // Önceki aboneliğin reader'ı hâlâ serbest bırakılıyor olabilir; o promise'i yakala.
+    const previousRelease = releasing;
+
+    const loop = (async () => {
+      // Eski reader serbest bırakılana kadar bekle, yoksa stream "already locked" atar.
+      if (previousRelease) {
+        try {
+          await previousRelease;
+        } catch {
+          /* yoksay */
+        }
+      }
+      if (sub.stopped || !port.readable) return;
+
+      // Stream hâlâ kilitliyse (serbest bırakma yarışı) kısa aralıklarla yeniden dene.
+      let localReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+      for (let attempt = 0; attempt < 6 && !sub.stopped; attempt++) {
+        try {
+          localReader = port.readable.getReader();
+          break;
+        } catch {
+          await delay(60);
+        }
+      }
+      if (!localReader || sub.stopped) {
+        try {
+          localReader?.releaseLock();
+        } catch {
+          /* yoksay */
+        }
+        return;
+      }
       activeReader = localReader;
+
       try {
-        while (reading) {
+        while (!sub.stopped) {
           const { value, done } = await localReader.read();
           if (done) break;
           if (value) {
@@ -192,15 +237,17 @@ const wrapPort = (port: any): ConnectedDevice => ({
         }
         if (activeReader === localReader) activeReader = null;
       }
-      // Döngü manuel durdurma olmadan (reading hâlâ true iken) sona erdiyse,
-      // cihaz koptu/yanıt vermiyor demektir → portu kapatıp kopmayı bildir.
-      if (reading) await handleReadLoopEnded(port);
+      // Döngü manuel durdurma OLMADAN sona erdiyse cihaz koptu/yanıt vermiyor
+      // demektir → portu kapatıp kopmayı bildir.
+      if (!sub.stopped) await handleReadLoopEnded(port);
     })();
+    activeReadLoop = loop;
 
     return {
       // Aboneliği kaldır: yalnızca okumayı durdur (portu KAPATMA; ekranlar
       // arası geçişte bağlantı korunur, yeniden onDataReceived ile devam eder).
       remove: () => {
+        sub.stopped = true;
         void releaseReader();
       },
     };

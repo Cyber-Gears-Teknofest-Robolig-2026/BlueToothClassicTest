@@ -200,11 +200,11 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 16
   },
-  disconnectBtn: { 
-    marginTop: 12, 
-    padding: 16, 
-    borderRadius: 16, 
-    alignItems: "center", 
+  disconnectBtn: {
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: "center",
     backgroundColor: "#EF4444"
   },
   disconnectBtnText: { 
